@@ -20,6 +20,8 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.math.collision.Ray;
 
+import de.codesourcery.voxelgame.core.render.ChunkRenderer;
+import de.codesourcery.voxelgame.core.render.IChunkRenderer;
 import de.codesourcery.voxelgame.core.world.Chunk;
 import de.codesourcery.voxelgame.core.world.ChunkFactory;
 import de.codesourcery.voxelgame.core.world.DefaultChunkManager;
@@ -75,7 +77,7 @@ public class Main implements ApplicationListener {
 			throw new RuntimeException(e);
 		}
         
-       	chunkRenderer = new FastChunkRenderer(chunkManager);        	
+       	chunkRenderer = new ChunkRenderer(chunkManager);        	
         
         shapeRenderer = new ShapeRenderer();
         

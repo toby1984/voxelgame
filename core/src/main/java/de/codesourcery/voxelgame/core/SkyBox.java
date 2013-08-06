@@ -13,6 +13,8 @@ import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Disposable;
 
+import de.codesourcery.voxelgame.core.render.ChunkRenderer;
+
 public class SkyBox implements Disposable {
 
 	private static final float SIZE=100;
@@ -48,7 +50,7 @@ public class SkyBox implements Disposable {
 	
 	public SkyBox() 
 	{
-		this.shader = FastChunkRenderer.loadShader( "/skybox_vertex.glsl" , "/skybox_fragment.glsl" );
+		this.shader = ChunkRenderer.loadShader( "/skybox_vertex.glsl" , "/skybox_fragment.glsl" );
 		
 		final String path = "/home/tobi/workspace/voxelgame/assets/";
 		

@@ -1,4 +1,4 @@
-package de.codesourcery.voxelgame.core.world;
+package de.codesourcery.voxelgame.core.util;
 
 import java.util.Random;
 
@@ -334,7 +334,7 @@ public class SimplexNoise { // Simplex noise in 2D, 3D and 4D
 		return result;
 	}
 	
-	public float[] createNoise3D(float xOffset,float yOffset,float zOffset,int mapSize,float tileSize,int octaveCount,float persistance) 
+	public float[] createNoise3D(float xOffset,float yOffset,float zOffset,int mapSizeX,int mapSizeY,int mapSizeZ,float tileSize,int octaveCount,float persistance) 
 	{
         float amplitude = 1.0f; // noise2() yields range -1...1
         double totalAmplitude = 0.0f;   
@@ -345,19 +345,21 @@ public class SimplexNoise { // Simplex noise in 2D, 3D and 4D
             totalAmplitude += amplitude;
         }
         
-        final float scalingFactor = tileSize/(float) mapSize;
+        final float scalingFactorX = tileSize/(float) mapSizeX;
+        final float scalingFactorY = tileSize/(float) mapSizeY;
+        final float scalingFactorZ = tileSize/(float) mapSizeZ;        
         
-		float[] result = new float[mapSize*mapSize*mapSize];
+		float[] result = new float[mapSizeX*mapSizeY*mapSizeZ];
 		int ptr = 0;
-		for ( int y = 0 ; y < mapSize ; y++ ) 
+		for ( int y = 0 ; y < mapSizeY ; y++ ) 
 		{
-			for ( int x =0 ; x < mapSize ; x++ ) 
+			for ( int x =0 ; x < mapSizeX ; x++ ) 
 			{
-				for ( int z =0 ; z < mapSize ; z++ ) 
+				for ( int z =0 ; z < mapSizeZ ; z++ ) 
 				{				
-					float nx = xOffset + x*scalingFactor;
-					float ny = yOffset + y*scalingFactor;
-					float nz = zOffset + z*scalingFactor;
+					float nx = xOffset + x*scalingFactorX;
+					float ny = yOffset + y*scalingFactorY;
+					float nz = zOffset + z*scalingFactorZ;
 					
 					double sum = 0.0f;
 					amplitude = 1.0f;

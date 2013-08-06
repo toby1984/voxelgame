@@ -1,7 +1,9 @@
-package de.codesourcery.voxelgame.core.world;
+package de.codesourcery.voxelgame.core.util;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import de.codesourcery.voxelgame.core.world.Chunk;
 
 
 public final class ChunkList 

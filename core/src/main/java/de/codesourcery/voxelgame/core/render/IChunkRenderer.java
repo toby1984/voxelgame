@@ -1,9 +1,10 @@
-package de.codesourcery.voxelgame.core;
+package de.codesourcery.voxelgame.core.render;
 
 import java.util.List;
 
 import com.badlogic.gdx.graphics.g3d.lights.PointLight;
 
+import de.codesourcery.voxelgame.core.FPSCameraController;
 import de.codesourcery.voxelgame.core.world.Chunk;
 
 public interface IChunkRenderer {

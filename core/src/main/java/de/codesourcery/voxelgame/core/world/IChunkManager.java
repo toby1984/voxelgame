@@ -12,6 +12,8 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
 public interface IChunkManager extends Disposable {
 
 	public abstract List<Chunk> getVisibleChunks();
+	
+	public abstract void chunkChanged(Chunk chunk);
 
 	public abstract void cameraMoved();
 

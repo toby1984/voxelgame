@@ -2,6 +2,8 @@ package de.codesourcery.voxelgame.core.world;
 
 import java.util.Arrays;
 
+import de.codesourcery.voxelgame.core.util.ChunkList;
+
 import junit.framework.TestCase;
 
 public class ChunkListTest extends TestCase {

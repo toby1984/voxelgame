@@ -115,6 +115,11 @@ public final class Chunk
 	 */
 	public static final int FLAG_CHANGED_SINCE_LOAD = 32;	
 	
+	/**
+	 * Indicates that lighting of this chunk needs to be recalculated.
+	 */
+	public static final int FLAG_LIGHT_RECALCULATION_REQUIRED = 64;	
+	
 	// tile coordinates
 	public final int x;
 	public final int z; 
@@ -132,7 +137,7 @@ public final class Chunk
 	public BlockRenderer blockRenderer;
 	
 	private final BoundingBox box = new BoundingBox();
-	private int flags = FLAG_MESH_REBUILD_REQUIRED;
+	private int flags = FLAG_MESH_REBUILD_REQUIRED|FLAG_LIGHT_RECALCULATION_REQUIRED;
 	
 	public Chunk(int x, int y,int z) 
 	{
@@ -171,6 +176,8 @@ public final class Chunk
 		blocks[blockX][blockY][blockZ].type=blockType;
 		setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
 		setMeshRebuildRequired(true);
+		setLightRecalculationRequired(true);
+		chunkManager.chunkChanged( this );
 		
 		System.out.println("Deleted block "+blockX+"/"+blockY+"/"+blockZ+" of "+this);
 		
@@ -471,6 +478,18 @@ public final class Chunk
 		}
 		setFlag(FLAG_MESH_REBUILD_REQUIRED , rebuildRequired );
 	}
+	
+	public boolean isLightRecalculationRequired() {
+		return isFlagSet( FLAG_LIGHT_RECALCULATION_REQUIRED); 
+	}
+	
+	public void setLightRecalculationRequired(boolean rebuildRequired) 
+	{
+		if ( rebuildRequired ) {
+			System.out.println("Requesting lighing for "+this);
+		}
+		setFlag(FLAG_LIGHT_RECALCULATION_REQUIRED , rebuildRequired );
+	}	
 
 	public boolean isDisposed() {
 		return isFlagSet(FLAG_DISPOSED);
@@ -526,6 +545,12 @@ public final class Chunk
 		if ( isFlagSet( FLAG_MESH_REBUILD_REQUIRED ) ) {
 			result.append("REBUILD_REQUIRED | ");
 		}
+		if ( isFlagSet( FLAG_LIGHT_RECALCULATION_REQUIRED) ) {
+			result.append("LIGHTING_RECALC | ");
+		}	
+		if ( isFlagSet( FLAG_CHANGED_SINCE_LOAD) ) {
+			result.append("NEEDS_STORE | ");
+		}			
 		if ( isFlagSet( FLAG_VISIBLE ) ) {
 			result.append("VISIBLE | ");
 		}

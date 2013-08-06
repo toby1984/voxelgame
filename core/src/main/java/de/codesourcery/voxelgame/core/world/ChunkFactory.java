@@ -4,7 +4,7 @@ import de.codesourcery.voxelgame.core.Block;
 
 public class ChunkFactory
 {
-	private final DefaultNoiseGenerator rnd = new DefaultNoiseGenerator(Chunk.BLOCKS_X, 0xdeadbeef );
+	private final DefaultNoiseGenerator rnd = new DefaultNoiseGenerator(Chunk.BLOCKS_X, Chunk.BLOCKS_Y,Chunk.BLOCKS_Z,0xdeadbeef );
 	
 	public ChunkFactory(long seed) 
 	{
@@ -14,7 +14,7 @@ public class ChunkFactory
 	public Chunk createChunk(int x,int y,int z) 
 	{
 		final Chunk result = new Chunk(x,y,z);
-		initialize2D(result);
+		initialize3D(result);
 		return result;
 	}
 	

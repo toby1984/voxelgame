@@ -1,4 +1,4 @@
-package de.codesourcery.voxelgame.core.world;
+package de.codesourcery.voxelgame.core.util;
 
 import java.awt.Color;
 import java.awt.Graphics2D;

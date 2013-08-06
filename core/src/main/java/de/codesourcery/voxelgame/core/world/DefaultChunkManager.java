@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.math.Vector3;
@@ -16,8 +17,9 @@ import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.math.collision.Ray;
 
 import de.codesourcery.voxelgame.core.Block;
+import de.codesourcery.voxelgame.core.util.ChunkList;
+import de.codesourcery.voxelgame.core.util.ChunkList.ChunkListEntry;
 import de.codesourcery.voxelgame.core.world.Chunk.ChunkKey;
-import de.codesourcery.voxelgame.core.world.ChunkList.ChunkListEntry;
 
 
 public class DefaultChunkManager implements IChunkManager 
@@ -81,12 +83,13 @@ public class DefaultChunkManager implements IChunkManager
 			chunk.setPinned(false);
 		}
 		
-		for ( int deltaX = -3 ; deltaX <= 3 ; deltaX++ ) {
-			for ( int deltaZ = -3 ; deltaZ <= 3 ; deltaZ++ ) {
+		for ( int deltaX = -3 ; deltaX <= 3 ; deltaX++ ) 
+		{
+			for ( int deltaZ = -3 ; deltaZ <= 3 ; deltaZ++ ) 
+			{
 				getChunk( cameraChunkX + deltaX , 0 , cameraChunkZ+deltaZ ).setFlags(Chunk.FLAG_PINNED);
 			}			
 		}
-		
 		updateVisibleChunksList();
 	}
 	
@@ -183,9 +186,43 @@ public class DefaultChunkManager implements IChunkManager
 			if ( isVisible ) 
 			{
 				visibleChunks.add( chunk );
+				if ( chunk.isLightRecalculationRequired() ) { // only recalculate lighting for visible chunks
+					// TODO: Maybe move this (and chunk loading) into separate threads
+					recalculateLighting(chunk);
+				}				
 			} 
 			current = current.next;
 		}
+	}
+	
+	public void chunkChanged(Chunk chunk) 
+	{
+		if ( chunk.isLightRecalculationRequired() ) {
+			recalculateLighting(chunk);
+		}
+	}
+
+	private void recalculateLighting(Chunk chunk) 
+	{
+		final Block[][][] blocks = chunk.blocks;
+		// set light level of blocks that are directly hit by sunlight (no opaque block above them)
+		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) {
+			for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
+			{
+				// start out with max. light level
+				// TODO: If we have more than one chunk on the Y axis, we will need to check chunks on top of the current one as well... 				
+				byte currentLightLevel = Block.MAX_LIGHT_LEVEL;
+				for ( int y1 = Chunk.BLOCKS_Y-1 ; y1 >= 0; y1-- ) 
+				{
+					final Block block = blocks[x][y1][z];
+					block.lightLevel = currentLightLevel;
+					if ( ! block.isTranslucentBlock() ) { // blocks below it will only receive min light level
+						currentLightLevel = Block.MIN_LIGHT_LEVEL; 
+					} 
+				}				
+			}			
+		}
+		chunk.setLightRecalculationRequired(false);
 	}
 
 	protected static void printChunk(List<Chunk> currentChunks) 

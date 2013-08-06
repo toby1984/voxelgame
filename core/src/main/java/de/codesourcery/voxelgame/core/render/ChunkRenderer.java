@@ -1,4 +1,4 @@
-package de.codesourcery.voxelgame.core;
+package de.codesourcery.voxelgame.core.render;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,11 +13,13 @@ import com.badlogic.gdx.graphics.g3d.lights.PointLight;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.Disposable;
 
-import de.codesourcery.voxelgame.core.render.BlockRenderer;
+import de.codesourcery.voxelgame.core.Block;
+import de.codesourcery.voxelgame.core.FPSCameraController;
+import de.codesourcery.voxelgame.core.Main;
 import de.codesourcery.voxelgame.core.world.Chunk;
 import de.codesourcery.voxelgame.core.world.IChunkManager;
 
-public class FastChunkRenderer implements Disposable , IChunkRenderer {
+public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 	@SuppressWarnings("unused")
 	private final Color solidMaterial;
@@ -37,15 +39,27 @@ public class FastChunkRenderer implements Disposable , IChunkRenderer {
 		"PINK"      ,"LIGHT_GRAY"     ,"WHITE"
 			};
 
-	private Color[] colors = new Color[] 
-			{
-			color(chunkColors[0]) , color(chunkColors[1]) , color(chunkColors[2]) ,
-			color(chunkColors[3]) , color(chunkColors[4]) , color(chunkColors[5]) ,
-			color(chunkColors[6]) , color(chunkColors[7]) , color(chunkColors[8]) 
-			};
-
-	private final Color solid;
-	private final Color water;
+	// color arrays with element[0] holding the color for Block.MIN_LIGHTLEVEL and element[Block.MAX_LIGHTLEVEL] holding the color for the max. light level	
+	private final Color[] solid;
+	private final Color[] water;
+	
+	public static Color[] colorGradient(String name,float alpha) {
+		
+		final Color color = color(name);
+		color.a = alpha;
+		
+		final float minLight = 0.8f;
+		final float scale = (1.0f-minLight) / (float) Block.MAX_LIGHT_LEVEL;
+		final Color[] result = new Color[Block.MAX_LIGHT_LEVEL+1];
+		for ( int i = 0 ; i <= Block.MAX_LIGHT_LEVEL ; i++ ) 
+		{
+			float factor = minLight+(i*scale);
+			Color newColor = new Color(color).mul( factor );
+			newColor.a = alpha;
+			result[i] = newColor;
+		}
+		return result;
+	}
 	
 	public static Color color(String name) 
 	{
@@ -60,16 +74,15 @@ public class FastChunkRenderer implements Disposable , IChunkRenderer {
 		}
 	}
 
-	public FastChunkRenderer(IChunkManager chunkManager) 
+	public ChunkRenderer(IChunkManager chunkManager) 
 	{
 		this.chunkManager = chunkManager;
 		this.solidMaterial =  Color.GREEN;
 		this.highlightMaterial = Color.RED;			
 		this.shader = loadShader();
 		
-		this.solid = color("GREEN");
-		this.water  = color("BLUE");
-		this.water.a = 0.3f;
+		this.solid = colorGradient("GREEN",1.0f);
+		this.water  = colorGradient("BLUE",0.3f);
 	}
 
 	private static ShaderProgram loadShader() {
@@ -124,19 +137,16 @@ public class FastChunkRenderer implements Disposable , IChunkRenderer {
 		return chunkColors[index];
 	}
 
-	private Color getColor(Chunk chunk,int blockX,int blockY,int blockZ,Block block) 
+	private Color getColor(Block block,byte lightLevel) 
 	{
 		switch( block.type ) {
 			case Block.Type.SOLID:
-				return solid;
+				return solid[lightLevel];
 			case Block.Type.WATER:
-				return water;
+				return water[lightLevel];
+			default:
+				throw new RuntimeException("Unhandled switch/case for block type "+block.type);
 		}
-		int clampedX = Math.abs( (1+chunk.x) % 3 );
-		int clampedY = Math.abs( (1+chunk.z) % 3 );
-
-		int index = (clampedX + clampedY*3) % colors.length;
-		return colors[index];
 	}
 
 	public void render(FPSCameraController cameraController,PointLight light,List<Chunk> visibleChunks) 
@@ -216,7 +226,7 @@ public class FastChunkRenderer implements Disposable , IChunkRenderer {
 
 //		shader.setUniformf("u_cameraPosition" , cameraController.camera.position );
 		shader.setUniformMatrix("u_modelViewProjection", cameraController.camera.combined );
-		// shader.setUniformMatrix("u_modelView", cameraController.camera.view );
+		shader.setUniformMatrix("u_modelView", cameraController.camera.view );
 		
 		shader.setUniformMatrix("u_cameraRotation" , cameraController.normalMatrix );		
 		
@@ -258,6 +268,11 @@ public class FastChunkRenderer implements Disposable , IChunkRenderer {
 					if ( ! block.isAirBlock() ) 
 					{
 						int sidesMask;
+						// TODO: Rendering translucent blocks needs fixing
+						// see http://stackoverflow.com/questions/3388294/opengl-question-about-the-usage-of-gldepthmask/3390094#3390094
+						// and http://www.opengl.org/wiki/Transparency_Sorting
+						// need to use separate VBOs for translucent blocks and render them
+						// back-to-front with depth buffer disabled
 						if ( x != 0 && block.type == Block.Type.WATER ) 
 						{
 							if ( y == Chunk.BLOCKS_Y-1 || blocks[x][y+1][z].isAirBlock() ) {
@@ -272,12 +287,13 @@ public class FastChunkRenderer implements Disposable , IChunkRenderer {
 						{
 							float blockCenterZ = zOrig + z * Chunk.BLOCK_DEPTH+(Chunk.BLOCK_DEPTH*0.5f);
 
-							final Color color = x == 0 ? highlightMaterial : getColor( chunk , x , y , z , block );
+							final Color topColor = x == 0 ? highlightMaterial : getColor( block , block.lightLevel );
+							final Color color = x == 0 ? highlightMaterial : getColor( block , (byte) (Block.MAX_LIGHT_LEVEL-1) );
 							
 							if ( DEBUG_PERFORMANCE ) {
 								sideCount += Integer.bitCount( sidesMask );
 							} 
-							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f , color , sidesMask );
+							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f , topColor, color , sidesMask );
 							if ( DEBUG_PERFORMANCE ) {
 								notCulled++;
 							}

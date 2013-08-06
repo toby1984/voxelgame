@@ -57,7 +57,7 @@ public final class BlockRenderer implements Disposable {
 		return this;
 	}
 
-	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, Color color ,int sideMask ) 
+	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, Color topColor,Color color ,int sideMask ) 
 	{
 		if ( (vertexCount+24) > 65535 ) {
 			System.out.println("Too many vertices!");
@@ -183,19 +183,19 @@ public final class BlockRenderer implements Disposable {
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,1,0, // normal
-					color.r,color.g,color.b, color.a ); // color RED
+					topColor.r,topColor.g,topColor.b, topColor.a );
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,1,0, // normal
-					color.r,color.g,color.b, color.a ); // color GREEN
+					topColor.r,topColor.g,topColor.b, topColor.a ); 
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					0,1,0, // normal
-					color.r,color.g,color.b, color.a ); // color BLUE
+					topColor.r,topColor.g,topColor.b, topColor.a ); 
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					0,1,0, // normal
-					color.r,color.g,color.b, color.a ); // color WHITE
+					topColor.r,topColor.g,topColor.b, topColor.a ); 
 
 			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
 		}	

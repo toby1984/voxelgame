@@ -8,10 +8,11 @@ import de.codesourcery.voxelgame.core.world.Chunk;
 
 public final class Block 
 {
-	public byte type=Block.Type.AIR;
-	
 	private static final Vector3 min = new Vector3();
 	private static final Vector3 max = new Vector3();	
+	
+	public static final byte MAX_LIGHT_LEVEL = 15;
+	public static final byte MIN_LIGHT_LEVEL = 0;
 	
 	public static final class Type 
 	{
@@ -19,6 +20,9 @@ public final class Block
 		public static final byte SOLID = 1;
 		public static final byte WATER = 2;
 	}
+	
+	public byte type=Block.Type.AIR;
+	public byte lightLevel=MIN_LIGHT_LEVEL;
 	
 	public boolean isAirBlock() 
 	{
