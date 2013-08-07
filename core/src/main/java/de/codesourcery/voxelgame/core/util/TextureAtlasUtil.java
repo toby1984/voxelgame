@@ -8,15 +8,20 @@ import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Point;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 public class TextureAtlasUtil 
 {
@@ -25,6 +30,7 @@ public class TextureAtlasUtil
 	
 	private BufferedImage image;
 	private MyPanel panel;
+	private InfoPanel infoPanel;
 	
 	public static void main(String[] args) throws IOException 
 	{
@@ -40,13 +46,62 @@ public class TextureAtlasUtil
 			int x1 = xOrigin + i*sizeInPixels+(i-1)*spacing;
 			int y1 = yOrigin;
 			int x2 = x1 + sizeInPixels;
-			int y2 = sizeInPixels;
+			int y2 = y1 + sizeInPixels;
 			graphics.setColor( colors[i] );
 			graphics.fillRect(x1,y1,(x2-x1),(y2-y1));
 		}
 		
 		new TextureAtlasUtil().run( image );
 	}
+
+	private void run(BufferedImage imageFile) throws IOException 
+	{
+		image = imageFile;
+		panel = new MyPanel(image) {
+
+			@Override
+			protected void selectionChanged(Selection selection) {
+				infoPanel.selectionChanged( selection );
+			}};
+		
+		final JFrame frame1 = new JFrame();
+		frame1.getContentPane().setLayout( new GridBagLayout() );
+		
+		GridBagConstraints cnstrs = new GridBagConstraints();
+		cnstrs.fill = GridBagConstraints.BOTH;
+		cnstrs.weightx = 1.0d;
+		cnstrs.weighty=1.0d;
+		cnstrs.gridheight = GridBagConstraints.REMAINDER;
+		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+		frame1.getContentPane().add( panel , cnstrs );
+		frame1.pack();
+		frame1.setVisible( true );
+		frame1.addKeyListener( panel.keyAdapter );
+		frame1.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE );
+		
+		// add frame #2
+		infoPanel = new InfoPanel( panel );
+		final JFrame frame2 = new JFrame();
+		frame2.getContentPane().setLayout( new GridBagLayout() );
+		
+		cnstrs = new GridBagConstraints();
+		cnstrs.fill = GridBagConstraints.BOTH;
+		cnstrs.weightx = 1.0d;
+		cnstrs.weighty=1.0d;
+		cnstrs.gridheight = GridBagConstraints.REMAINDER;
+		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+		frame2.getContentPane().add( infoPanel , cnstrs );
+		frame2.pack();
+		frame2.setVisible( true );
+		frame2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE );		
+		
+		panel.requestFocus();
+	}
+	
+	private void run(File imageFile) throws IOException 
+	{
+		run(ImageIO.read(imageFile ) );
+	}	
 	
 	protected static final class Selection 
 	{
@@ -94,6 +149,21 @@ public class TextureAtlasUtil
 			this.y1 = yMax;
 		}
 		
+		public void changeSize(int dx,int dy) {
+			changeWidth(dx);
+			changeHeight(dy);
+		}
+		
+		public void changeWidth(int dx) {
+			this.x1 += dx;
+			fixCoordinates();
+		}
+		
+		public void changeHeight(int dy) {
+			this.y1 += dy;
+			fixCoordinates();
+		}		
+		
 		public boolean isCloseToCenter(Point p) 
 		{
 			final Point center=getCenter();
@@ -103,6 +173,22 @@ public class TextureAtlasUtil
 			return dist <= SELECTION_RADIUS; 
 		}
 		
+		public Point getCorner(Corner corner) {
+			switch(corner) 
+			{
+			case TOP_LEFT:
+				return new Point(x0,y0);
+			case TOP_RIGHT:
+				return new Point(x1,y0);
+			case BOTTOM_LEFT:
+				return new Point(x0,y1);
+			case BOTTOM_RIGHT:
+				return new Point(x1,y1);
+			default:
+				throw new IllegalArgumentException("Unhandled corner: "+corner);
+			}
+		}
+
 		public Point getCenter() 
 		{
 			int xMin = Math.min(x0,x1);
@@ -122,11 +208,16 @@ public class TextureAtlasUtil
 			int dx = p.x - center.x;
 			int dy = p.y - center.y;
 			
+			moveCenter(dx,dy);
+		}
+		
+		public void moveCenter(int dx,int dy) 
+		{
 			x0 += dx;
 			x1 += dx;
 			y0 += dy;
 			y1 += dy;
-		}
+		}		
 		
 		public boolean isCloseToCorner(Point p) {
 			return getCornerInRange( p ) != null;
@@ -179,22 +270,6 @@ public class TextureAtlasUtil
 					break;
 				default:
 					throw new IllegalArgumentException("Invalid edge: "+edge);						
-			}
-		}
-		
-		public Point getCorner(Corner corner) 
-		{
-			switch(corner) {
-				case BOTTOM_LEFT:
-					return new Point(x0,y1);
-				case BOTTOM_RIGHT:
-					return new Point(x1,y1);
-				case TOP_LEFT:
-					return new Point(x0,y0);
-				case TOP_RIGHT:
-					return new Point(x1,y0);
-				default:
-					throw new IllegalArgumentException("Invalid corner: "+corner);
 			}
 		}
 		
@@ -261,32 +336,12 @@ public class TextureAtlasUtil
 				return result;
 			}
 			return null;
-		}		
-	}
-	
-	private void run(File imageFile) throws IOException 
-	{
-		run(ImageIO.read(imageFile ) );
-	}
+		}
 
-	private void run(BufferedImage imageFile) throws IOException 
-	{
-		image = imageFile;
-		panel = new MyPanel(image);
-		
-		final JFrame frame = new JFrame();
-		frame.getContentPane().setLayout( new GridBagLayout() );
-		
-		GridBagConstraints cnstrs = new GridBagConstraints();
-		cnstrs.fill = GridBagConstraints.BOTH;
-		cnstrs.weightx = 1.0d;
-		cnstrs.weighty=1.0d;
-		cnstrs.gridheight = GridBagConstraints.REMAINDER;
-		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
-		frame.getContentPane().add( panel , cnstrs );
-		frame.pack();
-		frame.setVisible( true );
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE );
+		public Point getInnerSize() 
+		{
+			return new Point( (x1-x0) -1 , (y1-y0) -1 );
+		}		
 	}
 	
 	protected static enum Corner {
@@ -308,7 +363,7 @@ public class TextureAtlasUtil
 		NONE;
 	}
 	
-	protected static final class MyPanel extends JPanel {
+	protected static abstract class MyPanel extends JPanel {
 
 		private final BufferedImage image;
 		
@@ -321,6 +376,68 @@ public class TextureAtlasUtil
 		private Point dragStart;
 		private Point dragEnd;
 		private boolean rendered = false;
+		
+		public final KeyAdapter keyAdapter = new KeyAdapter() 
+		{			
+			public void keyReleased(java.awt.event.KeyEvent e) 
+			{
+				if ( lastSelection != null && state == State.NONE ) 
+				{
+					boolean changed = false;
+					final boolean shiftPressed = ( e.getModifiers() & KeyEvent.SHIFT_MASK) != 0;
+					int speed = shiftPressed ? 3 : 1;
+					switch( e.getKeyCode()) 
+					{
+						case KeyEvent.VK_UP:
+							lastSelection.moveCenter( 0 , -1*speed );
+							changed = true;
+							break;
+						case KeyEvent.VK_DOWN:
+							lastSelection.moveCenter( 0 , 1*speed );
+							changed = true;
+							break;	
+						case KeyEvent.VK_LEFT:
+							lastSelection.moveCenter( -1*speed , 0 );
+							changed = true;
+							break;	
+						case KeyEvent.VK_RIGHT:
+							lastSelection.moveCenter( 1*speed , 0 );
+							changed = true;
+							break;								
+						case KeyEvent.VK_PLUS:
+							lastSelection.changeSize( 1*speed , 1*speed );
+							changed = true;
+							break;		
+						case KeyEvent.VK_MINUS:
+							lastSelection.changeSize( -1*speed , -1*speed );
+							changed = true;
+							break;		
+						case KeyEvent.VK_X:
+							if ( ( e.getModifiers() & KeyEvent.SHIFT_MASK ) != 0 ) {
+								lastSelection.changeSize( 1 , 0 );
+							} else {
+								lastSelection.changeSize( -1 , 0 );
+							}
+							changed = true;
+							break;	
+						case KeyEvent.VK_Y:
+							if ( shiftPressed )  {
+								lastSelection.changeSize( 0 , 1 );
+							} else {
+								lastSelection.changeSize( 0 , -1 );
+							}
+							changed = true;
+							break;								
+						default:
+					}
+					if ( changed ) 
+					{
+						selectionChanged( lastSelection );
+						repaint();
+					}
+				}
+			}
+		};
 		private final MouseAdapter mouseAdapter = new MouseAdapter() 
 		{
 			public void mousePressed(java.awt.event.MouseEvent e) 
@@ -414,6 +531,7 @@ public class TextureAtlasUtil
 					}
 					
 					state = State.NONE;			
+					selectionChanged(lastSelection);
 					MyPanel.this.repaint();						
 				}
 			}
@@ -490,12 +608,16 @@ public class TextureAtlasUtil
 			rendered = !rendered;
 		}
 		
+		protected abstract void selectionChanged(Selection selection);
+		
 		public MyPanel(BufferedImage image) {
 			this.image = image;
 			setMinimumSize( new Dimension(512,512 ) );
 			setPreferredSize( new Dimension(512,512 ) );
 			addMouseListener( this.mouseAdapter );
 			addMouseMotionListener( this.mouseAdapter );
+			addKeyListener( keyAdapter );
+			setFocusable(true);
 		}
 		
 		@Override
@@ -508,5 +630,140 @@ public class TextureAtlasUtil
 				lastSelection.renderWithCenter(graphics);
 			}
 		}
+	}
+	
+	protected static final class InfoPanel extends JPanel {
+		
+		private final MyPanel uiPanel;
+		
+		private final JTextField p0 = new JTextField("(0,0)");
+		private final JTextField p1 = new JTextField("(0,0)");
+		private final JTextField p2 = new JTextField("(0,0)");
+		private final JTextField p3 = new JTextField("(0,0)");
+		
+		private final JTextField p0Tex = new JTextField("(0,0)");
+		private final JTextField p1Tex = new JTextField("(0,0)");
+		private final JTextField p2Tex = new JTextField("(0,0)");
+		private final JTextField p3Tex = new JTextField("(0,0)");		
+		
+		private final JTextField selectionSize = new JTextField("0 x 0");
+		
+		private final Corner[] corners = { Corner.TOP_LEFT , Corner.BOTTOM_LEFT , Corner.BOTTOM_RIGHT , Corner.TOP_RIGHT };
+		private final String[] pointLabels= { "P0" , "P1" , "P2" , "P3" };
+		private final JTextField[] points = {p0,p1,p2,p3};
+		private final JTextField[] texPoints = {p0Tex,p1Tex,p2Tex,p3Tex};
+		
+		public InfoPanel(MyPanel uiPanel) 
+		{
+			this.uiPanel = uiPanel;
+			
+			setLayout( new GridBagLayout() );
+			int y = 0;
+			
+			// add p0
+			GridBagConstraints cnstrs=null;
+			
+			for ( int i = 0 ; i < corners.length ; i++)
+			{
+				cnstrs = new GridBagConstraints();
+				cnstrs.gridx=0;
+				cnstrs.gridy=y;
+				cnstrs.gridwidth=1;
+				cnstrs.gridheight=1;
+				cnstrs.weightx=0.0;
+				cnstrs.weighty=0.0;
+				cnstrs.fill = GridBagConstraints.NONE;
+				add( new JLabel( pointLabels[i] ) , cnstrs );
+				
+				cnstrs = new GridBagConstraints();
+				cnstrs.gridx=1;
+				cnstrs.gridy=y;
+				cnstrs.gridwidth=1;
+				cnstrs.gridheight=1;
+				cnstrs.weightx=0.5;
+				cnstrs.weighty=0.0;
+				cnstrs.fill = GridBagConstraints.HORIZONTAL;
+				add( points[i] , cnstrs );		
+				
+				cnstrs = new GridBagConstraints();
+				cnstrs.gridx=2;
+				cnstrs.gridy=y;
+				cnstrs.gridwidth=1;
+				cnstrs.gridheight=1;
+				cnstrs.weightx=0.5;
+				cnstrs.weighty=0.0;
+				cnstrs.fill = GridBagConstraints.HORIZONTAL;
+				add( texPoints[i] , cnstrs );					
+				
+				y++;
+			}
+			
+			cnstrs = new GridBagConstraints();
+			cnstrs.gridx=0;
+			cnstrs.gridy=y;
+			cnstrs.gridwidth=1;
+			cnstrs.gridheight=1;
+			cnstrs.weightx=0.0;
+			cnstrs.weighty=0.0;
+			cnstrs.fill = GridBagConstraints.NONE;
+			add( new JLabel( "Selection size" ) , cnstrs );
+			
+			cnstrs = new GridBagConstraints();
+			cnstrs.gridx=1;
+			cnstrs.gridy=y;
+			cnstrs.gridwidth=2;
+			cnstrs.gridheight=1;
+			cnstrs.weightx=1.0;
+			cnstrs.weighty=0.0;
+			cnstrs.fill = GridBagConstraints.HORIZONTAL;
+			add( selectionSize , cnstrs );			
+			
+			y++;			
+		}
+		
+		public void selectionChanged(Selection selection) 
+		{
+			p0.setText( toString( selection.getCorner( Corner.TOP_LEFT ) ) );
+			p1.setText( toString( selection.getCorner( Corner.BOTTOM_LEFT ) ));
+			p2.setText( toString( selection.getCorner( Corner.BOTTOM_RIGHT ) ) );
+			p3.setText( toString( selection.getCorner( Corner.TOP_RIGHT ) ) );
+			
+			final Point sizeInScreenPixels = selection.getInnerSize();
+			
+			// image gets scaled to panel size, calculate size in terms of the actual image 
+			float w = uiPanel.getWidth();
+			float h = uiPanel.getHeight();
+			
+			float percentageX = sizeInScreenPixels.x / w;
+			float percentageY = sizeInScreenPixels.y / h;
+			
+			int imageWidth = (int) Math.floor( percentageX * uiPanel.image.getWidth() );
+			int imageHeight = (int) Math.floor( percentageY * uiPanel.image.getHeight() );
+			
+			selectionSize.setText( imageWidth+" x "+imageHeight );
+			
+			p0Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.TOP_LEFT ) ) ) );
+			p1Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.BOTTOM_LEFT ) ) ) );
+			p2Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.BOTTOM_RIGHT ) ) ) );
+			p3Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.TOP_RIGHT ) ) ) );
+		}
+		
+		private Point2D.Float toTexCoordinates(Point pointInScreenCoordinates) 
+		{
+			float w = uiPanel.getWidth();
+			float h = uiPanel.getHeight();
+			
+			float percentageX = pointInScreenCoordinates.x / w;
+			float percentageY = pointInScreenCoordinates.y / h;			
+			return new Point2D.Float(percentageX,percentageY);
+		}
+		
+		private static String toString(Point p) {
+			return "("+p.x+","+p.y+")";
+		}
+		
+		private static String toString(Point2D.Float p) {
+			return "("+p.x+","+p.y+")";
+		}		
 	}
 }
