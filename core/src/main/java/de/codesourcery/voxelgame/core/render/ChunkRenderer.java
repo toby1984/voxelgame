@@ -217,7 +217,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 							if ( DEBUG_PERFORMANCE ) {
 								sideCount += Integer.bitCount( sidesMask );
 							} 
-							final float lightFactor =  block.lightLevel*(1f/(float)(Block.MAX_LIGHT_LEVEL+1));
+							final float lightFactor = 0.3f + block.lightLevel*(0.7f/(float)(Block.MAX_LIGHT_LEVEL+1));
 							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f ,lightFactor, block , sidesMask );
 							if ( DEBUG_PERFORMANCE ) {
 								notCulled++;

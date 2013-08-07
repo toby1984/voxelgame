@@ -25,6 +25,8 @@ public final class BlockRenderer implements Disposable {
 	
 	public static final int ALL_SIDES = SIDE_FRONT | SIDE_BACK | SIDE_LEFT | SIDE_RIGHT | SIDE_TOP | SIDE_BOTTOM;
 
+	private static final boolean DEBUG_TEXTURE_COORDS = true;
+	
 	private static final boolean DEBUG_PERFORMANCE = false;
 	
 	private static final boolean CULL_FACES = true;
@@ -81,14 +83,14 @@ public final class BlockRenderer implements Disposable {
 	private static final int TEX_OFFSET_VERTEX_BOTTOM_LEFT = 6;
 	
 	/**
-	 * Setup texture coordinates.
+	 * Setup texture coordinates (MUST be called once before using any block renderer).
 	 * 
 	 * This method requires a rectangular texture (size == width).
+	 * 
 	 * @param textureSize texture width/height in pixels
 	 * @param faceSize Heigth/width of a single block face in pixels
 	 * @param textureSpacing space in pixels between any two block textures or towards the texture image boundaries 
 	 */
-	
 	public static void setupTextureCoordinates(int textureSize,int faceSize,int textureSpacing) 
 	{
 		if ( blockTextureCoords == null ) {
@@ -127,7 +129,7 @@ public final class BlockRenderer implements Disposable {
 			{
 				// top-left corner of quad texture
 				float topLeftX = xOrigin + face*innerTextureWidth + face*textureSpacingWidth;
-				float topLeftY = yOrigin + type*innerTextureHeight+type*textureSpacingHeight;
+				float topLeftY = yOrigin + type*innerTextureHeight + type*textureSpacingHeight;
 				
 				// bottom-left corner of quad texture
 				float bottomLeftX = topLeftX;
@@ -141,8 +143,8 @@ public final class BlockRenderer implements Disposable {
 				float topRightX = topLeftX+innerTextureWidth;
 				float topRightY = topLeftY;
 				
-				// store UV-coordinates of quad , 
-				// order MUST be TOP_LEFT,TOP_RIGHT,BOTTOM_RIGHT,BOTTOM_LEFT needs to match with code in addBlock() !!!
+				// store UV-coordinates of each quad corner, 
+				// order MUST be TOP_LEFT,TOP_RIGHT,BOTTOM_RIGHT,BOTTOM_LEFT so it matches with code in addBlock() !!!
 				tmp[ptr++]=topLeftX;
 				tmp[ptr++]=topLeftY;
 				
@@ -153,7 +155,14 @@ public final class BlockRenderer implements Disposable {
 				tmp[ptr++]=bottomRightY;
 
 				tmp[ptr++]=bottomLeftX;
-				tmp[ptr++]=bottomLeftY;				
+				tmp[ptr++]=bottomLeftY;			
+				
+				if (DEBUG_TEXTURE_COORDS) {
+					System.out.println("---- Block type: "+type+" , face "+face+" , TOP_LEFT     = ("+topLeftX+","+topLeftY+")");
+					System.out.println("---- Block type: "+type+" , face "+face+" , TOP_RIGHT    = ("+topRightX+","+topRightY+")");
+					System.out.println("---- Block type: "+type+" , face "+face+" , BOTTOM_RIGHT = ("+bottomRightX+","+bottomRightY+")");
+					System.out.println("---- Block type: "+type+" , face "+face+" , BOTTOM_LEFT  = ("+bottomLeftX+","+bottomLeftY+")");
+				}
 			}
 		}
 		return result;
@@ -231,26 +240,26 @@ public final class BlockRenderer implements Disposable {
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V					
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V					
 					lightFactor );
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U	
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V	
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U	
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V	
 					lightFactor );
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture U		
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U		
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
 					lightFactor ); 
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture UV
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V	
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture UV
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V	
 					lightFactor ); 
 
 			indexBuilder.put( (short) p2,(short) p3, (short) p1 , (short) p1 , (short) p3 , (short) p0 );
@@ -372,25 +381,25 @@ public final class BlockRenderer implements Disposable {
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,-1,0, // normal
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_LEFT], // texture UV
-					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_LEFT], // texture UV
+					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture UV
 					lightFactor ); 
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,-1,0, // normal
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture UV
-					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture UV
+					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture UV
 					lightFactor ); 
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					0,-1,0, // normal
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture UV
-					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture UV
+					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture UV
 					lightFactor ); // color BLUE
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					0,-1,0, // normal
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture UV
-					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture UV
+					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture UV
 					lightFactor ); // color WHITE
 
 			indexBuilder.put( (short) p3,(short) p0, (short) p1 , (short) p3 , (short) p1 , (short) p2 );

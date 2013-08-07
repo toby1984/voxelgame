@@ -26,24 +26,25 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import de.codesourcery.voxelgame.core.Block;
+import de.codesourcery.voxelgame.core.Main;
 
 public class TextureAtlasUtil 
 {
-	private static boolean DEBUG_RENDER_BOUNDS = false; // whether to render image bounds
-	private static Color DEBUG_RENDER_BOUNDS_COLOR = Color.ORANGE;
-	
+	private static final boolean DEBUG_RENDER_BOUNDS = false; // whether to render image bounds
+	private static final Color DEBUG_RENDER_BOUNDS_COLOR = Color.ORANGE;
+	private static final boolean DEBUG_TEXTURE_COORDS = true;
 	
 	/**
 	 * Number of pixels in-between any two textures (or the texture atlas boundaries)
 	 */
-	public static final int SUBTEXTURE_SPACING = 2;
+	public static final int SUBTEXTURE_SPACING = 4;
 	public static final int SUBTEXTURE_X_ORIGIN = SUBTEXTURE_SPACING;
 	public static final int SUBTEXTURE_Y_ORIGIN = SUBTEXTURE_SPACING;
 	public static final int BLOCK_TEXTURE_SIZE = 16; 
 	
 	private static final int SELECTION_RADIUS = 10; // 5 pixels
 	
-	public static final File OUTPUT_FILE = new File("/home/tgierke/workspace/voxelgame/assets/texture_atlas.png"); 
+	public static final File OUTPUT_FILE = new File( Main.ASSETS_PATH , "texture_atlas.png"); 
 	
 	private BufferedImage image;
 	private MyPanel panel;
@@ -54,7 +55,6 @@ public class TextureAtlasUtil
 		final BufferedImage image = createAtlas();
 		ImageIO.write( image , "PNG" ,OUTPUT_FILE);
 		System.out.println("Image written to "+OUTPUT_FILE.getAbsolutePath());
-		System.exit(0);
 		new TextureAtlasUtil().run( image );
 	}
 	
@@ -75,7 +75,7 @@ public class TextureAtlasUtil
 		System.out.println("Actual image size: "+realSize+" x "+realSize);
 		final BufferedImage image = new BufferedImage(realSize,realSize,BufferedImage.TYPE_4BYTE_ABGR);
 
-		Graphics graphics = image.getGraphics();
+		Graphics2D graphics = image.createGraphics();
 
 		/* See more detailed comments in BlockRenderer on how 
 		 * the texture atlas needs to be constructed exactly.
@@ -83,6 +83,11 @@ public class TextureAtlasUtil
 		 * Textures for all 6 faces of a specific block type are expected to be layed out horizontally ( along the X axis)
 		 * in the order FRONT,BACK,LEFT,RIGHT,TOP,BOTTOM 
 		 */
+		final String[] TEXT = new String[] {"FR","BA","LE","RI","TO","BO"};
+		
+		final float w = realSize;
+		final float h = realSize;
+		
 		for ( int blockType = 0 ; blockType <= Block.Type.MAX ; blockType++ ) 
 		{
 			for ( int face = 0 ; face < FACE_COUNT ;face++) 
@@ -92,6 +97,19 @@ public class TextureAtlasUtil
 				
 				int x2 = x1 + BLOCK_TEXTURE_SIZE;
 				int y2 = y1 + BLOCK_TEXTURE_SIZE;
+				
+				Point2D.Float topLeft     = toTexCoordinates( new Point(x1,y1) , w , h );
+				Point2D.Float topRight    = toTexCoordinates( new Point(x2,y1) , w , h );
+				Point2D.Float bottomLeft  = toTexCoordinates( new Point(x1,y2) , w , h );
+				Point2D.Float bottomRight = toTexCoordinates( new Point(x2,y2) , w , h );
+				
+				if (DEBUG_TEXTURE_COORDS) 
+				{
+					System.out.println("---- Block type: "+blockType+" , face "+face+" , TOP_LEFT     = "+toString(topLeft));
+					System.out.println("---- Block type: "+blockType+" , face "+face+" , TOP_RIGHT    = "+toString(topRight));
+					System.out.println("---- Block type: "+blockType+" , face "+face+" , BOTTOM_RIGHT = "+toString(bottomRight));
+					System.out.println("---- Block type: "+blockType+" , face "+face+" , BOTTOM_LEFT  = "+toString(bottomLeft));
+				}				
 				Color color = faceColors[face];
 				switch(blockType) 
 				{
@@ -104,13 +122,26 @@ public class TextureAtlasUtil
 					default:
 				}
 				graphics.setColor( color );
-				graphics.fillRect(x1,y1,(x2-x1),(y2-y1));
+				graphics.fillRect(x1-1,y1-1,(x2-x1)+1,(y2-y1)+1); // I draw the texture actually 2 pixels wider and higher than the reported size to account for rounding at the edges 
+				
+				if ( blockType != Block.Type.AIR) 
+				{
+					int strWidth = graphics.getFontMetrics().stringWidth( TEXT[face] );
+					int strHeight = (int) graphics.getFontMetrics().getLineMetrics( TEXT[face] , graphics ).getHeight();
+	
+					int centerX = x1+(x2-x1)/2;
+					int centerY = y1+(y2-y1)/2;
+					
+					graphics.setColor(Color.BLACK);
+					graphics.drawString( TEXT[face] , centerX - (strWidth/2) , centerY + (strHeight/2) );
+				}
 				
 				if ( DEBUG_RENDER_BOUNDS ) 
 				{
 //					graphics.setXORMode( DEBUG_RENDER_BOUNDS_COLOR );
 					graphics.setColor( DEBUG_RENDER_BOUNDS_COLOR );
 					graphics.drawRect(x1-1,y1-1,(x2-x1)+1,(y2-y1)+1);
+					graphics.setPaintMode();
 //					graphics.setPaintMode();
 				}
 			}
@@ -842,7 +873,7 @@ public class TextureAtlasUtil
 			selectionSize.setText( imageWidth+" x "+imageHeight );
 			
 			for ( int i = 0 ; i < 4 ; i++) {
-				texPoints[i].setText( toString( toTexCoordinates( selection.getCorner( corners[i] ) ) ) );
+				texPoints[i].setText( TextureAtlasUtil.toString( toTexCoordinates( selection.getCorner( corners[i] ) ) ) );
 			}
 			
 			StringBuilder builder = new StringBuilder();
@@ -863,20 +894,23 @@ public class TextureAtlasUtil
 		
 		private Point2D.Float toTexCoordinates(Point pointInScreenCoordinates) 
 		{
-			float w = uiPanel.getWidth();
-			float h = uiPanel.getHeight();
-			
-			float percentageX = pointInScreenCoordinates.x / w;
-			float percentageY = pointInScreenCoordinates.y / h;			
-			return new Point2D.Float(percentageX,percentageY);
+			return TextureAtlasUtil.toTexCoordinates( pointInScreenCoordinates , uiPanel.getWidth(),uiPanel.getHeight());
 		}
 		
 		private static String toString(Point p) {
 			return "("+p.x+","+p.y+")";
 		}
-		
-		private static String toString(Point2D.Float p) {
-			return "("+p.x+","+p.y+")";
-		}		
+	
 	}
+	
+	protected static String toString(Point2D.Float p) {
+		return "("+p.x+","+p.y+")";
+	}		
+	
+	protected static Point2D.Float toTexCoordinates(Point pointInScreenCoordinates,float w,float h) 
+	{
+		float percentageX = pointInScreenCoordinates.x / w;
+		float percentageY = pointInScreenCoordinates.y / h;			
+		return new Point2D.Float(percentageX,percentageY);
+	}	
 }

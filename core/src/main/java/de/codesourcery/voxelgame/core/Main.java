@@ -34,6 +34,10 @@ public class Main implements ApplicationListener {
 
 	private static final boolean RESTRICT_CAMERA_TO_AIR_BLOCKS = false;
 	
+	public static final File CHUNK_STORAGE = new File("/home/tobi/tmp/chunks");
+	
+	public static final File ASSETS_PATH = new File("/home/tobi/workspace/voxelgame/assets/");
+	
 	private PerspectiveCamera camera;
 	private SpriteBatch spriteBatch;
 	private FPSCameraController camController;
@@ -81,7 +85,7 @@ public class Main implements ApplicationListener {
         
         chunkManager = new DefaultChunkManager(camera);
         try {
-			chunkManager.setChunkStorage( new DefaultChunkStorage( new File("/home/tgierke/tmp/chunks"),new ChunkFactory( 0xdeadbeef ) ) );
+			chunkManager.setChunkStorage( new DefaultChunkStorage( CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) ) );
 		} 
         catch (IOException e) 
 		{
@@ -263,7 +267,7 @@ public class Main implements ApplicationListener {
         skyBox.render(camera);
         
         // bind texture atlas
-        textureAtlas.bind(0);
+        textureAtlas.bind();
         
         // render blocks
         chunkRenderer.render( camController, light , chunkManager.getVisibleChunks()  );

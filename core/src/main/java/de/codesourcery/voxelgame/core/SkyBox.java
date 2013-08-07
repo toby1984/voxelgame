@@ -1,5 +1,7 @@
 package de.codesourcery.voxelgame.core;
 
+import java.io.File;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL20;
@@ -17,8 +19,6 @@ import de.codesourcery.voxelgame.core.render.ChunkRenderer;
 
 public class SkyBox implements Disposable {
 
-	final String PATH = "/home/tgierke/workspace/voxelgame/assets/";
-	
 	private static final float SIZE=100;
 	
 	private final Vector3 normal = new Vector3(0,1,0);
@@ -43,7 +43,9 @@ public class SkyBox implements Disposable {
 	
 	private ShaderProgram shader;
 	
-	private Texture loadTexture(String path) {
+	private Texture loadTexture(File baseDir,String file) 
+	{
+		final String path = new File(baseDir,file).getAbsolutePath();
 		Texture result = new Texture(Gdx.files.internal(path), false);
 		result.setFilter(TextureFilter.Linear,TextureFilter.Linear);
 		result.setWrap(TextureWrap.ClampToEdge,TextureWrap.ClampToEdge);
@@ -55,12 +57,12 @@ public class SkyBox implements Disposable {
 		this.shader = ChunkRenderer.loadShader( "/skybox_vertex.glsl" , "/skybox_fragment.glsl" );
 		
 		// load textures
-		front =loadTexture(PATH+"front.png");
-		back = loadTexture(PATH+"back.png");
-		left = loadTexture(PATH+"left.png");
-		right = loadTexture(PATH+"right.png");
-		top = loadTexture(PATH+"top.png");
-		bottom = loadTexture(PATH+"bottom.png");
+		front =loadTexture(Main.ASSETS_PATH,"front.png");
+		back = loadTexture(Main.ASSETS_PATH,"back.png");
+		left = loadTexture(Main.ASSETS_PATH,"left.png");
+		right = loadTexture(Main.ASSETS_PATH,"right.png");
+		top = loadTexture(Main.ASSETS_PATH,"top.png");
+		bottom = loadTexture(Main.ASSETS_PATH,"bottom.png");
 		
 		// create box
 		final Vector3 v1 = new Vector3();
