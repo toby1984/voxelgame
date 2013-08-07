@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.math.Vector3;

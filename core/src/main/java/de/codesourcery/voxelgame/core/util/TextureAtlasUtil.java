@@ -37,14 +37,15 @@ public class TextureAtlasUtil
 	/**
 	 * Number of pixels in-between any two textures (or the texture atlas boundaries)
 	 */
-	public static final int SUBTEXTURE_SPACING = 4;
+	public static final int SUBTEXTURE_SPACING = 2;
 	public static final int SUBTEXTURE_X_ORIGIN = SUBTEXTURE_SPACING;
 	public static final int SUBTEXTURE_Y_ORIGIN = SUBTEXTURE_SPACING;
 	public static final int BLOCK_TEXTURE_SIZE = 16; 
 	
 	private static final int SELECTION_RADIUS = 10; // 5 pixels
 	
-	public static final File OUTPUT_FILE = new File( Main.ASSETS_PATH , "texture_atlas.png"); 
+	public static final File OUTPUT_FILE = new File( Main.ASSETS_PATH , "texture_atlas.png");
+	private static final Color OUTLINE_COLOR = Color.PINK;
 	
 	private BufferedImage image;
 	private MyPanel panel;
@@ -122,7 +123,12 @@ public class TextureAtlasUtil
 					default:
 				}
 				graphics.setColor( color );
-				graphics.fillRect(x1-1,y1-1,(x2-x1)+1,(y2-y1)+1); // I draw the texture actually 2 pixels wider and higher than the reported size to account for rounding at the edges 
+				
+				graphics.fillRect(x1-1,y1-1,(x2-x1)+2,(y2-y1)+2); // I draw the texture actually 2 pixels wider and higher than the reported size to account for texture bleeding at the edges 
+				
+//				graphics.setXORMode( OUTLINE_COLOR );
+//				graphics.drawRect(x1,y1,(x2-x1)-1,(y2-y1)-1);
+//				graphics.setPaintMode();				
 				
 				if ( blockType != Block.Type.AIR) 
 				{

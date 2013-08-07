@@ -10,6 +10,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL10;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.Texture.TextureWrap;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g3d.lights.PointLight;
@@ -65,10 +67,19 @@ public class Main implements ApplicationListener {
 	{
 		crosshair = new Texture(Gdx.files.internal("crosshair.png"));
 		
-		textureAtlas = new Texture(Gdx.files.internal("texture_atlas.png"));
+		textureAtlas = new Texture(Gdx.files.internal("texture_atlas.png"),false);
 		if ( textureAtlas.getWidth() != textureAtlas.getHeight() ) {
 			throw new RuntimeException("Internal error, texture atlas is not rectangular ?");
 		}
+		
+		/*
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);		 
+		 */
+		textureAtlas.setFilter(TextureFilter.Nearest,TextureFilter.Linear);
+		textureAtlas.setWrap( TextureWrap.Repeat , TextureWrap.Repeat );
 		
 		BlockRenderer.setupTextureCoordinates( textureAtlas.getWidth() , TextureAtlasUtil.BLOCK_TEXTURE_SIZE , TextureAtlasUtil.SUBTEXTURE_SPACING );
 		
