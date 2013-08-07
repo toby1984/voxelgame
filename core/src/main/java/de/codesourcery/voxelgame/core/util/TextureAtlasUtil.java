@@ -40,7 +40,7 @@ public class TextureAtlasUtil
 	public static final int SUBTEXTURE_SPACING = 2;
 	public static final int SUBTEXTURE_X_ORIGIN = SUBTEXTURE_SPACING;
 	public static final int SUBTEXTURE_Y_ORIGIN = SUBTEXTURE_SPACING;
-	public static final int BLOCK_TEXTURE_SIZE = 16; 
+	public static final int BLOCK_TEXTURE_SIZE = 64; 
 	
 	private static final int SELECTION_RADIUS = 10; // 5 pixels
 	
@@ -84,7 +84,8 @@ public class TextureAtlasUtil
 		 * Textures for all 6 faces of a specific block type are expected to be layed out horizontally ( along the X axis)
 		 * in the order FRONT,BACK,LEFT,RIGHT,TOP,BOTTOM 
 		 */
-		final String[] TEXT = new String[] {"FR","BA","LE","RI","TO","BO"};
+		final String[] TEXT = new String[] {"Sibylle","Tobi","Sibylle","Tobi","Sibylle","Tobi"};
+//		final String[] TEXT = new String[] {"Front","Back","Left","Right","Top","Bottom"};
 		
 		final float w = realSize;
 		final float h = realSize;

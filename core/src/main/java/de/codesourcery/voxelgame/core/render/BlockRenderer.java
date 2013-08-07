@@ -185,11 +185,6 @@ public final class BlockRenderer implements Disposable {
 
 	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, float lightFactor,Block block ,int sideMask ) 
 	{
-		if ( (vertexCount+24) > 65535 ) {
-			System.out.println("Too many vertices!");
-			return;
-		}
-		
 		final float[] textureUV = blockTextureCoords[ block.type ];
 		
 		int p0,p1,p2,p3;
@@ -440,23 +435,21 @@ public final class BlockRenderer implements Disposable {
 			vbo = createVBO( vertexCount );
 		}
 
-		if ( ibo == null ||  ibo.getNumMaxIndices() < indexBuilder.actualSize()  ) 
+		final int indexCount = indexBuilder.actualSize();
+		// glDrawElements uses UNSIGNED_SHORT and thus can draw at most 65535 indices at once
+		final int indexBufferSize = indexCount <= 65535 ? indexCount : 65535;
+		
+		if ( ibo == null ||  ibo.getNumMaxIndices() < indexBufferSize  ) 
 		{
 			if ( ibo != null ) {
 				ibo.dispose();
 				ibo = null;
 			}
 			if ( DEBUG_PERFORMANCE ) {
-				System.out.println("Creating VBO for "+indexBuilder.actualSize()+" indices.");
+				System.out.println("Creating VBO for "+indexBufferSize+" indices.");
 			}
-			ibo = createIBO( indexBuilder.actualSize() );
-		}		
-
-		vbo.setVertices( vertexBuilder.array , 0 , vertexBuilder.actualSize() );
-		ibo.setIndices( indexBuilder.array , 0 , indexBuilder.actualSize() );
-
-		vbo.bind( shader );
-		ibo.bind();
+			ibo = createIBO( indexBufferSize );
+		}	
 
 		if ( CULL_FACES ) {
 			Gdx.graphics.getGL20().glEnable( GL20.GL_CULL_FACE );
@@ -464,8 +457,19 @@ public final class BlockRenderer implements Disposable {
 		if ( DEPTH_BUFFER ) {
 			Gdx.graphics.getGL20().glEnable(GL11.GL_DEPTH_TEST);
 		}
-
-		Gdx.graphics.getGL20().glDrawElements(GL20.GL_TRIANGLES, indexBuilder.actualSize() , GL20.GL_UNSIGNED_SHORT , 0);
+		
+		vbo.bind( shader );
+		ibo.bind();
+		
+		int indicesRemaining = indexCount;
+		while ( indicesRemaining > 9 ) 
+		{
+			vbo.setVertices( vertexBuilder.array , 0 , vertexBuilder.actualSize() );
+			ibo.setIndices( indexBuilder.array , 0 , indexBuilder.actualSize() );
+			int indicesToDraw = indicesRemaining > 65535 ? 65535 : indicesRemaining;
+			Gdx.graphics.getGL20().glDrawElements(GL20.GL_TRIANGLES, indicesToDraw , GL20.GL_UNSIGNED_SHORT , 0);
+			indicesRemaining -= indicesToDraw;
+		}
 
 		if ( DEPTH_BUFFER ) {
 			Gdx.graphics.getGL20().glDisable(GL11.GL_DEPTH_TEST);
