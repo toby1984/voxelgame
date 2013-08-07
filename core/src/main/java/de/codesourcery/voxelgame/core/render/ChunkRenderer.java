@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.util.List;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g3d.lights.PointLight;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
@@ -21,10 +20,6 @@ import de.codesourcery.voxelgame.core.world.IChunkManager;
 
 public class ChunkRenderer implements Disposable , IChunkRenderer {
 
-	@SuppressWarnings("unused")
-	private final Color solidMaterial;
-	private final Color highlightMaterial;	
-
 	private static final boolean DEBUG_PERFORMANCE = true;
 
 	private long frame = 0;
@@ -32,57 +27,10 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	private final ShaderProgram shader;
 	private final IChunkManager chunkManager;
 
-	private static String[] chunkColors= new String[] 
-			{
-		"GREEN"     ,"BLUE"    ,"CYAN",
-		"DARK_GRAY" ,"MAGENTA" ,"ORANGE",
-		"PINK"      ,"LIGHT_GRAY"     ,"WHITE"
-			};
-
-	// color arrays with element[0] holding the color for Block.MIN_LIGHTLEVEL and element[Block.MAX_LIGHTLEVEL] holding the color for the max. light level	
-	private final Color[] solid;
-	private final Color[] water;
-	
-	public static Color[] colorGradient(String name,float alpha) {
-		
-		final Color color = color(name);
-		color.a = alpha;
-		
-		final float minLight = 0.8f;
-		final float scale = (1.0f-minLight) / (float) Block.MAX_LIGHT_LEVEL;
-		final Color[] result = new Color[Block.MAX_LIGHT_LEVEL+1];
-		for ( int i = 0 ; i <= Block.MAX_LIGHT_LEVEL ; i++ ) 
-		{
-			float factor = minLight+(i*scale);
-			Color newColor = new Color(color).mul( factor );
-			newColor.a = alpha;
-			result[i] = newColor;
-		}
-		return result;
-	}
-	
-	public static Color color(String name) 
-	{
-		try 
-		{
-			Color orig = (Color) Color.class.getField( name ).get(null);
-			return new Color(orig);
-		} 
-		catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
-	}
-
 	public ChunkRenderer(IChunkManager chunkManager) 
 	{
 		this.chunkManager = chunkManager;
-		this.solidMaterial =  Color.GREEN;
-		this.highlightMaterial = Color.RED;			
 		this.shader = loadShader();
-		
-		this.solid = colorGradient("GREEN",1.0f);
-		this.water  = colorGradient("BLUE",0.3f);
 	}
 
 	private static ShaderProgram loadShader() {
@@ -127,27 +75,6 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		System.out.println("---- SHADER: "+name+" ----\n"+result);
 		return result.toString();
 	}		
-
-	public static String getColorNameFor(int chunkX,int chunkY) 
-	{
-		int clampedX = (1+chunkX) % 3;
-		int clampedY = (1+chunkY) % 3;
-
-		int index = clampedX + clampedY*3;
-		return chunkColors[index];
-	}
-
-	private Color getColor(Block block,byte lightLevel) 
-	{
-		switch( block.type ) {
-			case Block.Type.SOLID:
-				return solid[lightLevel];
-			case Block.Type.WATER:
-				return water[lightLevel];
-			default:
-				throw new RuntimeException("Unhandled switch/case for block type "+block.type);
-		}
-	}
 
 	public void render(FPSCameraController cameraController,PointLight light,List<Chunk> visibleChunks) 
 	{
@@ -287,13 +214,11 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 						{
 							float blockCenterZ = zOrig + z * Chunk.BLOCK_DEPTH+(Chunk.BLOCK_DEPTH*0.5f);
 
-							final Color topColor = x == 0 ? highlightMaterial : getColor( block , block.lightLevel );
-							final Color color = x == 0 ? highlightMaterial : getColor( block , (byte) (Block.MAX_LIGHT_LEVEL-1) );
-							
 							if ( DEBUG_PERFORMANCE ) {
 								sideCount += Integer.bitCount( sidesMask );
 							} 
-							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f , topColor, color , sidesMask );
+							final float lightFactor =  block.lightLevel*(1f/(float)(Block.MAX_LIGHT_LEVEL+1));
+							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f ,lightFactor, block , sidesMask );
 							if ( DEBUG_PERFORMANCE ) {
 								notCulled++;
 							}

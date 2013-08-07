@@ -95,6 +95,37 @@ public final class FloatArrayBuilder {
 		array[currentOffset++]=value7;
 	}		
 	
+	public void put(float value1,float value2,float value3,float value4,float value5,float value6,float value7,float value8) 
+	{
+		if ( currentOffset+8 >= array.length-1) {
+			extendArray(8);
+		}
+		array[currentOffset++]=value1;
+		array[currentOffset++]=value2;
+		array[currentOffset++]=value3;
+		array[currentOffset++]=value4;
+		array[currentOffset++]=value5;
+		array[currentOffset++]=value6;
+		array[currentOffset++]=value7;
+		array[currentOffset++]=value8;		
+	}	
+	
+	public void put(float value1,float value2,float value3,float value4,float value5,float value6,float value7,float value8,float value9) 
+	{
+		if ( currentOffset+9 >= array.length-1) {
+			extendArray(9);
+		}
+		array[currentOffset++]=value1;
+		array[currentOffset++]=value2;
+		array[currentOffset++]=value3;
+		array[currentOffset++]=value4;
+		array[currentOffset++]=value5;
+		array[currentOffset++]=value6;
+		array[currentOffset++]=value7;
+		array[currentOffset++]=value8;		
+		array[currentOffset++]=value9;				
+	}	
+	
 	public void put(float value1,float value2,float value3,float value4,float value5,float value6,float value7,float value8,float value9,float value10) 
 	{
 		if ( currentOffset+10 >= array.length-1) {

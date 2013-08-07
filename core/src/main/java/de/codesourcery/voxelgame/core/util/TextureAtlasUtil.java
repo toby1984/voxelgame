@@ -21,12 +21,29 @@ import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
+
+import de.codesourcery.voxelgame.core.Block;
 
 public class TextureAtlasUtil 
 {
-
+	private static boolean DEBUG_RENDER_BOUNDS = false; // whether to render image bounds
+	private static Color DEBUG_RENDER_BOUNDS_COLOR = Color.ORANGE;
+	
+	
+	/**
+	 * Number of pixels in-between any two textures (or the texture atlas boundaries)
+	 */
+	public static final int SUBTEXTURE_SPACING = 2;
+	public static final int SUBTEXTURE_X_ORIGIN = SUBTEXTURE_SPACING;
+	public static final int SUBTEXTURE_Y_ORIGIN = SUBTEXTURE_SPACING;
+	public static final int BLOCK_TEXTURE_SIZE = 16; 
+	
 	private static final int SELECTION_RADIUS = 10; // 5 pixels
+	
+	public static final File OUTPUT_FILE = new File("/home/tgierke/workspace/voxelgame/assets/texture_atlas.png"); 
 	
 	private BufferedImage image;
 	private MyPanel panel;
@@ -34,24 +51,71 @@ public class TextureAtlasUtil
 	
 	public static void main(String[] args) throws IOException 
 	{
-		final BufferedImage image = new BufferedImage(128,128,BufferedImage.TYPE_4BYTE_ABGR);
-		
-		Color[] colors = {Color.BLACK,Color.PINK,Color.RED,Color.BLUE,Color.GREEN,Color.MAGENTA};
-		Graphics graphics = image.getGraphics();
-		final int spacing = 2;
-		final int xOrigin = 4;
-		final int yOrigin = 4;
-		final int sizeInPixels = 16; 
-		for ( int i = 0 ; i <colors.length;i++) {
-			int x1 = xOrigin + i*sizeInPixels+(i-1)*spacing;
-			int y1 = yOrigin;
-			int x2 = x1 + sizeInPixels;
-			int y2 = y1 + sizeInPixels;
-			graphics.setColor( colors[i] );
-			graphics.fillRect(x1,y1,(x2-x1),(y2-y1));
-		}
-		
+		final BufferedImage image = createAtlas();
+		ImageIO.write( image , "PNG" ,OUTPUT_FILE);
+		System.out.println("Image written to "+OUTPUT_FILE.getAbsolutePath());
+		System.exit(0);
 		new TextureAtlasUtil().run( image );
+	}
+	
+	private static BufferedImage createAtlas() 
+	{
+		final int FACE_COUNT = 6;
+		final Color[] faceColors = {Color.YELLOW,Color.PINK,Color.RED,Color.BLUE,Color.GREEN,Color.MAGENTA};
+		
+		int sizeX = SUBTEXTURE_X_ORIGIN + 6 * BLOCK_TEXTURE_SIZE+5 * SUBTEXTURE_SPACING;
+		int sizeY = SUBTEXTURE_Y_ORIGIN + (Block.Type.MAX+1)*BLOCK_TEXTURE_SIZE+Block.Type.MAX*SUBTEXTURE_SPACING;
+		
+		int maxSize = Math.max(sizeX,sizeY);
+		
+		// log_a (x) = log_b (x) / log_b (a)
+		final int pow = (int) Math.ceil( Math.log( maxSize ) / Math.log(2 ) );
+		System.out.println("Required image size: "+maxSize+" x "+maxSize+" (pow: "+pow+")");
+		int realSize = 1 << pow;
+		System.out.println("Actual image size: "+realSize+" x "+realSize);
+		final BufferedImage image = new BufferedImage(realSize,realSize,BufferedImage.TYPE_4BYTE_ABGR);
+
+		Graphics graphics = image.getGraphics();
+
+		/* See more detailed comments in BlockRenderer on how 
+		 * the texture atlas needs to be constructed exactly.
+		 * 
+		 * Textures for all 6 faces of a specific block type are expected to be layed out horizontally ( along the X axis)
+		 * in the order FRONT,BACK,LEFT,RIGHT,TOP,BOTTOM 
+		 */
+		for ( int blockType = 0 ; blockType <= Block.Type.MAX ; blockType++ ) 
+		{
+			for ( int face = 0 ; face < FACE_COUNT ;face++) 
+			{
+				int x1 = SUBTEXTURE_X_ORIGIN + face*BLOCK_TEXTURE_SIZE+face*SUBTEXTURE_SPACING;
+				int y1 = SUBTEXTURE_Y_ORIGIN + blockType*BLOCK_TEXTURE_SIZE + blockType*SUBTEXTURE_SPACING;
+				
+				int x2 = x1 + BLOCK_TEXTURE_SIZE;
+				int y2 = y1 + BLOCK_TEXTURE_SIZE;
+				Color color = faceColors[face];
+				switch(blockType) 
+				{
+					case Block.Type.AIR:
+						color = new Color( color.getRed() , color.getGreen() , color.getBlue() , 1 );
+						break;
+					case Block.Type.WATER:
+						color = new Color( color.getRed() , color.getGreen() , color.getBlue() , 128 );
+						break;
+					default:
+				}
+				graphics.setColor( color );
+				graphics.fillRect(x1,y1,(x2-x1),(y2-y1));
+				
+				if ( DEBUG_RENDER_BOUNDS ) 
+				{
+//					graphics.setXORMode( DEBUG_RENDER_BOUNDS_COLOR );
+					graphics.setColor( DEBUG_RENDER_BOUNDS_COLOR );
+					graphics.drawRect(x1-1,y1-1,(x2-x1)+1,(y2-y1)+1);
+//					graphics.setPaintMode();
+				}
+			}
+		}
+		return image;
 	}
 
 	private void run(BufferedImage imageFile) throws IOException 
@@ -644,12 +708,15 @@ public class TextureAtlasUtil
 		private final JTextField p0Tex = new JTextField("(0,0)");
 		private final JTextField p1Tex = new JTextField("(0,0)");
 		private final JTextField p2Tex = new JTextField("(0,0)");
-		private final JTextField p3Tex = new JTextField("(0,0)");		
+		private final JTextField p3Tex = new JTextField("(0,0)");	
+		
+		private final JTextArea code = new JTextArea();
 		
 		private final JTextField selectionSize = new JTextField("0 x 0");
 		
-		private final Corner[] corners = { Corner.TOP_LEFT , Corner.BOTTOM_LEFT , Corner.BOTTOM_RIGHT , Corner.TOP_RIGHT };
-		private final String[] pointLabels= { "P0" , "P1" , "P2" , "P3" };
+		// Order of corners MUST match order used in BlockRenderer#setupTextureCoordinates()
+		private final Corner[] corners = { Corner.TOP_LEFT , Corner.TOP_RIGHT , Corner.BOTTOM_RIGHT, Corner.BOTTOM_LEFT };
+		private final String[] pointLabels= { "TOP_LEFT" , "TOP_RIGHT" , "BOTTOM_RIGHT" , "BOTTOM_LEFT" };
 		private final JTextField[] points = {p0,p1,p2,p3};
 		private final JTextField[] texPoints = {p0Tex,p1Tex,p2Tex,p3Tex};
 		
@@ -665,6 +732,9 @@ public class TextureAtlasUtil
 			
 			for ( int i = 0 ; i < corners.length ; i++)
 			{
+				points[i].setEditable(false);
+				texPoints[i].setEditable(false);
+				
 				cnstrs = new GridBagConstraints();
 				cnstrs.gridx=0;
 				cnstrs.gridy=y;
@@ -698,6 +768,7 @@ public class TextureAtlasUtil
 				y++;
 			}
 			
+			// selection size
 			cnstrs = new GridBagConstraints();
 			cnstrs.gridx=0;
 			cnstrs.gridy=y;
@@ -716,17 +787,45 @@ public class TextureAtlasUtil
 			cnstrs.weightx=1.0;
 			cnstrs.weighty=0.0;
 			cnstrs.fill = GridBagConstraints.HORIZONTAL;
+			
+			selectionSize.setEditable(false);
 			add( selectionSize , cnstrs );			
+			
+			y++;	
+			
+			// code
+			cnstrs = new GridBagConstraints();
+			cnstrs.gridx=0;
+			cnstrs.gridy=y;
+			cnstrs.gridwidth=1;
+			cnstrs.gridheight=1;
+			cnstrs.weightx=0.0;
+			cnstrs.weighty=0.0;
+			cnstrs.fill = GridBagConstraints.NONE;
+			add( new JLabel( "Code" ) , cnstrs );
+			
+			cnstrs = new GridBagConstraints();
+			cnstrs.gridx=1;
+			cnstrs.gridy=y;
+			cnstrs.gridwidth=2;
+			cnstrs.gridheight=1;
+			cnstrs.weightx=1.0;
+			cnstrs.weighty=0.0;
+			cnstrs.fill = GridBagConstraints.HORIZONTAL;
+			code.setColumns( 25 );
+			code.setRows( 5 );
+			
+			code.setEditable(false);
+			add( new JScrollPane( code ) , cnstrs );			
 			
 			y++;			
 		}
 		
 		public void selectionChanged(Selection selection) 
 		{
-			p0.setText( toString( selection.getCorner( Corner.TOP_LEFT ) ) );
-			p1.setText( toString( selection.getCorner( Corner.BOTTOM_LEFT ) ));
-			p2.setText( toString( selection.getCorner( Corner.BOTTOM_RIGHT ) ) );
-			p3.setText( toString( selection.getCorner( Corner.TOP_RIGHT ) ) );
+			for ( int i = 0 ; i < 4 ; i++) {
+				points[i].setText( toString( selection.getCorner( corners[i] ) ) );
+			}
 			
 			final Point sizeInScreenPixels = selection.getInnerSize();
 			
@@ -742,10 +841,24 @@ public class TextureAtlasUtil
 			
 			selectionSize.setText( imageWidth+" x "+imageHeight );
 			
-			p0Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.TOP_LEFT ) ) ) );
-			p1Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.BOTTOM_LEFT ) ) ) );
-			p2Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.BOTTOM_RIGHT ) ) ) );
-			p3Tex.setText( toString( toTexCoordinates( selection.getCorner(Corner.TOP_RIGHT ) ) ) );
+			for ( int i = 0 ; i < 4 ; i++) {
+				texPoints[i].setText( toString( toTexCoordinates( selection.getCorner( corners[i] ) ) ) );
+			}
+			
+			StringBuilder builder = new StringBuilder();
+			builder.append("new float[] { ");
+			for ( int i = 0 ; i < 4 ; i++) 
+			{
+				Point2D.Float coords = toTexCoordinates( selection.getCorner( corners[i] ) );
+				if ( i > 0 ) {
+					builder.append(" , ");
+				}
+				builder.append( coords.x+"f");
+				builder.append( ",");
+				builder.append( coords.y+"f");
+			}			
+			builder.append("};");
+			code.setText( builder.toString() );
 		}
 		
 		private Point2D.Float toTexCoordinates(Point pointInScreenCoordinates) 

@@ -17,6 +17,8 @@ import de.codesourcery.voxelgame.core.render.ChunkRenderer;
 
 public class SkyBox implements Disposable {
 
+	final String PATH = "/home/tgierke/workspace/voxelgame/assets/";
+	
 	private static final float SIZE=100;
 	
 	private final Vector3 normal = new Vector3(0,1,0);
@@ -52,15 +54,13 @@ public class SkyBox implements Disposable {
 	{
 		this.shader = ChunkRenderer.loadShader( "/skybox_vertex.glsl" , "/skybox_fragment.glsl" );
 		
-		final String path = "/home/tobi/workspace/voxelgame/assets/";
-		
 		// load textures
-		front =loadTexture(path+"front.png");
-		back = loadTexture(path+"back.png");
-		left = loadTexture(path+"left.png");
-		right = loadTexture(path+"right.png");
-		top = loadTexture(path+"top.png");
-		bottom = loadTexture(path+"bottom.png");
+		front =loadTexture(PATH+"front.png");
+		back = loadTexture(PATH+"back.png");
+		left = loadTexture(PATH+"left.png");
+		right = loadTexture(PATH+"right.png");
+		top = loadTexture(PATH+"top.png");
+		bottom = loadTexture(PATH+"bottom.png");
 		
 		// create box
 		final Vector3 v1 = new Vector3();

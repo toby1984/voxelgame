@@ -3,7 +3,8 @@
 // per-vertex attributes
 in vec4 a_position;
 in vec4 a_normal;
-in vec4 a_color;
+in vec2 a_texCoord;
+in float a_lightFactor;
       
 uniform mat4 u_modelView;
 uniform mat4 u_modelViewProjection;
@@ -13,14 +14,12 @@ uniform vec4 u_cameraPosition;
 // lighting
 uniform vec4 u_lightColor;
 
-// fog
-
-
-
 // shader output
-smooth out vec4 v_color;
 smooth out vec3 rotatedSurfaceNormal;
 smooth out vec3 v_lightDir;
+smooth out vec2 vTexCoord;
+
+out float v_lightFactor;
 
 void main()                   
 {	
@@ -37,6 +36,7 @@ void main()
    // normal vector to light source
    v_lightDir = normalize(lightPos - eyeVertex);
    
-   v_color = a_color;
    gl_Position =  u_modelViewProjection * a_position;
+   vTexCoord = a_texCoord;
+   v_lightFactor = a_lightFactor;
 }

@@ -16,9 +16,12 @@ public final class Block
 	
 	public static final class Type 
 	{
+		// !!! Don't forget to update the MAX constant when adding new types !!!
 		public static final byte AIR = 0;
 		public static final byte SOLID = 1;
 		public static final byte WATER = 2;
+		
+		public static final byte MAX = WATER;
 	}
 	
 	public byte type=Block.Type.AIR;

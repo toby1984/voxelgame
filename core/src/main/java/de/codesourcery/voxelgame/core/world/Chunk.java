@@ -20,7 +20,7 @@ public final class Chunk
 	public static final int BLOCKS_X = 16; 
 	
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 32; 
+	public static final int BLOCKS_Y = 16; 
 	
 	// number of blocks along Z axis
 	public static final int BLOCKS_Z = 16; 

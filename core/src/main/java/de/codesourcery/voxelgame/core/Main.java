@@ -20,8 +20,10 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.math.collision.Ray;
 
+import de.codesourcery.voxelgame.core.render.BlockRenderer;
 import de.codesourcery.voxelgame.core.render.ChunkRenderer;
 import de.codesourcery.voxelgame.core.render.IChunkRenderer;
+import de.codesourcery.voxelgame.core.util.TextureAtlasUtil;
 import de.codesourcery.voxelgame.core.world.Chunk;
 import de.codesourcery.voxelgame.core.world.ChunkFactory;
 import de.codesourcery.voxelgame.core.world.DefaultChunkManager;
@@ -43,6 +45,8 @@ public class Main implements ApplicationListener {
 	private SkyBox skyBox;
 	private ShapeRenderer shapeRenderer;
 	
+	private Texture textureAtlas;
+	
 	private final Hit targetedBlock = new Hit();
 	private boolean nonAirBlockSelected = false;
 	
@@ -56,6 +60,14 @@ public class Main implements ApplicationListener {
 	public void create () 
 	{
 		crosshair = new Texture(Gdx.files.internal("crosshair.png"));
+		
+		textureAtlas = new Texture(Gdx.files.internal("texture_atlas.png"));
+		if ( textureAtlas.getWidth() != textureAtlas.getHeight() ) {
+			throw new RuntimeException("Internal error, texture atlas is not rectangular ?");
+		}
+		
+		BlockRenderer.setupTextureCoordinates( textureAtlas.getWidth() , TextureAtlasUtil.BLOCK_TEXTURE_SIZE , TextureAtlasUtil.SUBTEXTURE_SPACING );
+		
 		camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         camera.position.set(0f, 200f, 0.0000000001f);
         camera.lookAt(0,0,0);
@@ -69,7 +81,7 @@ public class Main implements ApplicationListener {
         
         chunkManager = new DefaultChunkManager(camera);
         try {
-			chunkManager.setChunkStorage( new DefaultChunkStorage( new File("/home/tobi/tmp/chunks"),new ChunkFactory( 0xdeadbeef ) ) );
+			chunkManager.setChunkStorage( new DefaultChunkStorage( new File("/home/tgierke/tmp/chunks"),new ChunkFactory( 0xdeadbeef ) ) );
 		} 
         catch (IOException e) 
 		{
@@ -250,6 +262,9 @@ public class Main implements ApplicationListener {
         // render sky
         skyBox.render(camera);
         
+        // bind texture atlas
+        textureAtlas.bind(0);
+        
         // render blocks
         chunkRenderer.render( camController, light , chunkManager.getVisibleChunks()  );
         
@@ -308,6 +323,8 @@ public class Main implements ApplicationListener {
 	@Override
 	public void dispose () 
 	{
+		crosshair.dispose();
+		textureAtlas.dispose();
 		font.dispose();
 		skyBox.dispose();
 		chunkManager.dispose();

@@ -1,17 +1,21 @@
 
-smooth in vec4 v_color;
+uniform sampler2D color_texture;
+ 	
+in float v_lightFactor;
+
+smooth in vec2 vTexCoord;
 smooth in vec3 rotatedSurfaceNormal;
 smooth in vec3 v_lightDir;
 
 void main()                                   
 {
    // phong shading
-   vec3 shadedColor = v_color.rgb;
+   vec4 v_color = texture2D(color_texture, vTexCoord );
+   v_color.rgb = v_color.rgb * v_lightFactor;
+
    float dotProduct = dot(normalize(rotatedSurfaceNormal),normalize(v_lightDir));
-   shadedColor = max(0.5, dotProduct) * v_color.rgb;
-       
-   gl_FragColor.rgb=shadedColor.rgb;
-   
+   vec3 shadedColor = max(0.5, dotProduct) * v_color.rgb;
+             
    // per-pixel "fog" (actually modifies alpha-channel only)
    const float zFar = 1700;
    const float fogDensity = 2; 
@@ -20,5 +24,7 @@ void main()
    float fogFactor = exp( -pow( fogDensity * distToCamera , 6.0) );   
    fogFactor = clamp(fogFactor, 0.0, 1.0);
 
-   gl_FragColor.a = v_color.a * fogFactor;   
+   gl_FragColor.rgb=shadedColor;
+   gl_FragColor.a = v_color.a;
+   // gl_FragColor.a = v_color.a * fogFactor;   
 }
