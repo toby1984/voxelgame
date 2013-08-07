@@ -34,6 +34,8 @@ public class TextureAtlasUtil
 	private static final Color DEBUG_RENDER_BOUNDS_COLOR = Color.ORANGE;
 	private static final boolean DEBUG_TEXTURE_COORDS = true;
 	
+	private static final boolean DEBUG_TEXT = false;
+	
 	/**
 	 * Number of pixels in-between any two textures (or the texture atlas boundaries)
 	 */
@@ -131,7 +133,7 @@ public class TextureAtlasUtil
 //				graphics.drawRect(x1,y1,(x2-x1)-1,(y2-y1)-1);
 //				graphics.setPaintMode();				
 				
-				if ( blockType != Block.Type.AIR) 
+				if ( DEBUG_TEXT && blockType != Block.Type.AIR) 
 				{
 					int strWidth = graphics.getFontMetrics().stringWidth( TEXT[face] );
 					int strHeight = (int) graphics.getFontMetrics().getLineMetrics( TEXT[face] , graphics ).getHeight();
