@@ -36,22 +36,21 @@ public class Main implements ApplicationListener {
 
 	private static final boolean RESTRICT_CAMERA_TO_AIR_BLOCKS = false;
 	
-	public static final File CHUNK_STORAGE = new File("/home/tobi/tmp/chunks");
+	public static final File CHUNK_STORAGE = new File("/home/tgierke/tmp/chunks");
 	
-	public static final File ASSETS_PATH = new File("/home/tobi/workspace/voxelgame/assets/");
+	public static final File ASSETS_PATH = new File("/home/tgierke/workspace/voxelgame/assets/");
 	
 	private PerspectiveCamera camera;
 	private SpriteBatch spriteBatch;
 	private FPSCameraController camController;
 	private DefaultChunkManager chunkManager;
 	private IChunkRenderer chunkRenderer;
-	private PointLight light;
 	private Texture crosshair;
 	private BitmapFont font;
 	private SkyBox skyBox;
 	private ShapeRenderer shapeRenderer;
 	
-	private Texture textureAtlas;
+	private Texture blockTextures;
 	
 	private final Hit targetedBlock = new Hit();
 	private boolean nonAirBlockSelected = false;
@@ -62,26 +61,25 @@ public class Main implements ApplicationListener {
 	private int minFPS=Integer.MAX_VALUE;
 	private int maxFPS=Integer.MIN_VALUE;
 			
-	@Override
-	public void create () 
-	{
+	private void setupTextures() {
 		crosshair = new Texture(Gdx.files.internal("crosshair.png"));
 		
-		textureAtlas = new Texture(Gdx.files.internal("texture_atlas.png"),false);
-		if ( textureAtlas.getWidth() != textureAtlas.getHeight() ) {
+		// setup texture atlas with block textures
+		blockTextures = new Texture(Gdx.files.internal("texture_atlas.png"),false);
+		if ( blockTextures.getWidth() != blockTextures.getHeight() ) {
 			throw new RuntimeException("Internal error, texture atlas is not rectangular ?");
 		}
 		
-		/*
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);		 
-		 */
-		textureAtlas.setFilter(TextureFilter.Nearest,TextureFilter.Linear);
-		textureAtlas.setWrap( TextureWrap.Repeat , TextureWrap.Repeat );
+		blockTextures.setFilter(TextureFilter.Nearest,TextureFilter.Linear);
+		blockTextures.setWrap( TextureWrap.Repeat , TextureWrap.Repeat );
 		
-		BlockRenderer.setupTextureCoordinates( textureAtlas.getWidth() , TextureAtlasUtil.BLOCK_TEXTURE_SIZE , TextureAtlasUtil.SUBTEXTURE_SPACING );
+		BlockRenderer.setupTextureCoordinates( blockTextures.getWidth() , TextureAtlasUtil.BLOCK_TEXTURE_SIZE , TextureAtlasUtil.SUBTEXTURE_SPACING );
+	}
+	
+	@Override
+	public void create () 
+	{
+		setupTextures();
 		
 		camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         camera.position.set(0f, 200f, 0.0000000001f);
@@ -104,13 +102,9 @@ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			throw new RuntimeException(e);
 		}
         
-       	chunkRenderer = new ChunkRenderer(chunkManager);        	
-        
         shapeRenderer = new ShapeRenderer();
         
         spriteBatch = new SpriteBatch();
-        
-        light = new PointLight().set(Color.WHITE , new Vector3(200f, 400f, 0f ) , 10.0f);
         
 		camController = new FPSCameraController(camera,camera.direction)  //  new MyCameraInputProcessor(cam) 
 		{
@@ -251,7 +245,11 @@ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 				chunkManager.cameraMoved();
 			}
 		}; 
-        Gdx.input.setInputProcessor(camController);	
+        
+       	chunkRenderer = new ChunkRenderer(chunkManager,camController);    
+       	chunkManager.setChunkRenderer( chunkRenderer ); // TODO: Circular dependency ChunkManager <-> ChunkRenderer ... not that nice...
+       	
+		Gdx.input.setInputProcessor(camController);	
 	}
 	
 	@Override
@@ -277,11 +275,11 @@ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         // render sky
         skyBox.render(camera);
         
-        // bind texture atlas
-        textureAtlas.bind();
+        // bind block texture atlas
+        blockTextures.bind();
         
         // render blocks
-        chunkRenderer.render( camController, light , chunkManager.getVisibleChunks()  );
+        chunkRenderer.render();
         
         // render outline of targeted block
         
@@ -315,6 +313,7 @@ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         final int centerY = Gdx.graphics.getHeight()/2;
         spriteBatch.draw(crosshair,centerX-crosshair.getWidth()/2,centerY-crosshair.getHeight()/2);
         
+        // debug output
         final float fontHeight = 1.25f*font.getBounds( "XXX" ).height;
         
         float y = Gdx.graphics.getHeight() - 15;
@@ -339,7 +338,7 @@ glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	public void dispose () 
 	{
 		crosshair.dispose();
-		textureAtlas.dispose();
+		blockTextures.dispose();
 		font.dispose();
 		skyBox.dispose();
 		chunkManager.dispose();

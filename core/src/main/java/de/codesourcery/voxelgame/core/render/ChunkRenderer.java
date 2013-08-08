@@ -8,7 +8,6 @@ import java.util.List;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.g3d.lights.PointLight;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.Disposable;
 
@@ -17,6 +16,7 @@ import de.codesourcery.voxelgame.core.FPSCameraController;
 import de.codesourcery.voxelgame.core.Main;
 import de.codesourcery.voxelgame.core.world.Chunk;
 import de.codesourcery.voxelgame.core.world.IChunkManager;
+import de.codesourcery.voxelgame.core.world.IChunkVisitor;
 
 public class ChunkRenderer implements Disposable , IChunkRenderer {
 
@@ -26,10 +26,12 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 	private final ShaderProgram shader;
 	private final IChunkManager chunkManager;
+	private final FPSCameraController cameraController;
 
-	public ChunkRenderer(IChunkManager chunkManager) 
+	public ChunkRenderer(IChunkManager chunkManager,FPSCameraController cameraController) 
 	{
 		this.chunkManager = chunkManager;
+		this.cameraController = cameraController;
 		this.shader = loadShader();
 	}
 
@@ -75,74 +77,37 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		System.out.println("---- SHADER: "+name+" ----\n"+result);
 		return result.toString();
 	}		
+	
+	private final IChunkVisitor visitor = new IChunkVisitor() {
 
-	public void render(FPSCameraController cameraController,PointLight light,List<Chunk> visibleChunks) 
+		@Override
+		public void visit(Chunk chunk) {
+			renderChunk(chunk);
+		}
+	};
+
+	public void render() 
 	{
 		// DEBUG
-		long renderTime = 0;
-		long geometrySetupTime = 0;
-		int totalBlockCount = 0;
-		int maxBlocks = 0;
-		long time = 0;
-
-		for ( int chunkIndex = 0 ; chunkIndex < visibleChunks.size() ; chunkIndex++ ) 
-		{
-			final Chunk chunk = visibleChunks.get(chunkIndex); 
-			if ( chunk.isDisposed() ) {
-//				System.err.println("Won't render disposed chunk "+t);
-				continue;
-			}
-			
-			BlockRenderer renderer = chunk.blockRenderer;
-			if ( renderer == null || chunk.isMeshRebuildRequired() ) 
-			{
-				if ( DEBUG_PERFORMANCE ) {				
-					time = -System.currentTimeMillis();
-				}
-				if ( renderer != null ) {
-					renderer.dispose();
-					chunk.blockRenderer = null;
-				}
-				chunk.blockRenderer = renderer = new BlockRenderer();
-
-				renderer.begin();
-
-				final int blocksRenderedInChunk = createGeometry(chunk);
-				if ( DEBUG_PERFORMANCE ) {
-					maxBlocks = Math.max(blocksRenderedInChunk ,maxBlocks);
-					totalBlockCount += blocksRenderedInChunk;
-				}
-				renderer.end();
-				chunk.setMeshRebuildRequired( false );
-
-				if ( DEBUG_PERFORMANCE ) {
-					time += System.currentTimeMillis();
-					geometrySetupTime += time;
-				}					
-			}
-			// RENDER 
-			if ( DEBUG_PERFORMANCE ) {
-				time = -System.currentTimeMillis();
-			}
-			renderChunk(chunk,cameraController,light);
-
-			if ( DEBUG_PERFORMANCE ) {
-				time += System.currentTimeMillis();
-				renderTime += time;
-			}					
+		long renderTime=0;
+		if ( DEBUG_PERFORMANCE ) {
+			renderTime = -System.currentTimeMillis();
 		}
+		
+		chunkManager.visitVisibleChunks( visitor );
 
 		if ( DEBUG_PERFORMANCE ) 
 		{
+			renderTime+=System.currentTimeMillis();
 			frame++;
 			if ( (frame%240)==0) 
 			{
-				System.out.println("RENDERING: geometry setup: "+geometrySetupTime+" ms, rendering: "+renderTime+" ms (blocks: "+totalBlockCount+" , max. per chunk: "+maxBlocks+")");
+				System.out.println("RENDERING: rendering: "+renderTime+" ms");
 			}			
 		}
 	}
 
-	private void renderChunk(Chunk chunk,FPSCameraController cameraController,PointLight light) 
+	private void renderChunk(Chunk chunk) 
 	{
 		final GL20 gl20 = Gdx.graphics.getGL20();
 		
@@ -158,6 +123,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		shader.setUniformMatrix("u_cameraRotation" , cameraController.normalMatrix );		
 		
 		chunk.blockRenderer.render( shader );
+		
 		shader.end();
 		
 	    gl20.glBlendFunc (GL20.GL_ONE, GL20.GL_ZERO);
@@ -170,9 +136,14 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		shader.dispose();
 	}
 
-	private int createGeometry(Chunk chunk) {
+	/**
+	 * Initializes the mesh for a given chunk
+	 * @param chunk
+	 * @return
+	 */
+	public int setupMesh(Chunk chunk) {
 
-		int sideCount=0; // debug
+		int sideCount = 0; // debug
 		int notCulled = 0; // debug
 
 		final float xOrig = chunk.bb.min.x;
@@ -180,6 +151,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		final float zOrig = chunk.bb.min.z;
 
 		final BlockRenderer renderer = chunk.blockRenderer;
+		renderer.begin();
+		
 		final Block[][][] blocks = chunk.blocks;
 
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) 
@@ -227,6 +200,9 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 				}				
 			}			
 		}
+		
+		renderer.end();
+		chunk.setMeshRebuildRequired( false );		
 
 		if ( DEBUG_PERFORMANCE && (frame%60)==0) 
 		{

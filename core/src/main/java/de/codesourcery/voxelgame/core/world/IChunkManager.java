@@ -1,7 +1,5 @@
 package de.codesourcery.voxelgame.core.world;
 
-import java.util.List;
-
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.math.collision.Ray;
@@ -11,9 +9,9 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
 
 public interface IChunkManager extends Disposable {
 
-	public abstract List<Chunk> getVisibleChunks();
+	public abstract void visitVisibleChunks(IChunkVisitor visitor);
 	
-	public abstract void chunkChanged(Chunk chunk);
+	public abstract void updateChunk(Chunk chunk);
 
 	public abstract void cameraMoved();
 

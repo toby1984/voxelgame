@@ -80,6 +80,22 @@ public final class BlockRenderer implements Disposable {
 	private static final int TEX_OFFSET_VERTEX_TOP_RIGHT = 2;
 	private static final int TEX_OFFSET_VERTEX_BOTTOM_RIGHT = 4;
 	private static final int TEX_OFFSET_VERTEX_BOTTOM_LEFT = 6;
+		
+	private final ShortArrayBuilder indexBuilder = new ShortArrayBuilder(10000,10000);
+	private final FloatArrayBuilder vertexBuilder = new FloatArrayBuilder(10000*ELEMENTS_PER_VERTEX,1000*ELEMENTS_PER_VERTEX);
+
+	private VertexBufferObject vbo;
+	private IndexBufferObject ibo;
+
+	private int vertexCount = 0;
+	
+	public BlockRenderer begin() 
+	{
+		indexBuilder.begin();
+		vertexBuilder.begin();
+		vertexCount = 0; 
+		return this;
+	}
 	
 	/**
 	 * Setup texture coordinates (MUST be called once before using any block renderer).
@@ -97,6 +113,13 @@ public final class BlockRenderer implements Disposable {
 		}
 	}
 	
+	/**
+	 * 
+	 * @param textureSize texture size in pixels (texture is assumed to be rectangular)
+	 * @param faceSize size of a single block face texture (rectangular)
+	 * @param textureSpacing space in pixels between any two adjacent textures and to the texture atlas' borders
+	 * @return
+	 */
 	private static float[][] createTextureCoordinates(int textureSize,int faceSize,int textureSpacing) 
 	{
 		/*
@@ -105,10 +128,7 @@ public final class BlockRenderer implements Disposable {
 		 * in the following order
 		 * 
 		 *  FRONT BACK LEFT RIGHT TOP BOTTOM
-		 *  
-		 *  with 2 pixels of space between any two textures.
 		 */
-		
 		float textureSpacingWidth=textureSpacing/(float) textureSize;  // width of a single block texture in texture coordinates (including spacing 
 		float textureSpacingHeight=textureSpacing/(float) textureSize; // height of a single block texture in texture coordinates			
 		
@@ -143,7 +163,7 @@ public final class BlockRenderer implements Disposable {
 				float topRightY = topLeftY;
 				
 				// store UV-coordinates of each quad corner, 
-				// order MUST be TOP_LEFT,TOP_RIGHT,BOTTOM_RIGHT,BOTTOM_LEFT so it matches with code in addBlock() !!!
+				// order MUST be TOP_LEFT,TOP_RIGHT,BOTTOM_RIGHT,BOTTOM_LEFT so it matches with code in BlockRenderer#addBlock() !!!
 				tmp[ptr++]=topLeftX;
 				tmp[ptr++]=topLeftY;
 				
@@ -165,23 +185,7 @@ public final class BlockRenderer implements Disposable {
 			}
 		}
 		return result;
-	}
-	
-	private final ShortArrayBuilder indexBuilder = new ShortArrayBuilder(10000,10000);
-	private final FloatArrayBuilder vertexBuilder = new FloatArrayBuilder(10000*ELEMENTS_PER_VERTEX,1000*ELEMENTS_PER_VERTEX);
-
-	private VertexBufferObject vbo;
-	private IndexBufferObject ibo;
-
-	private int vertexCount = 0;
-	
-	public BlockRenderer begin() 
-	{
-		indexBuilder.begin();
-		vertexBuilder.begin();
-		vertexCount = 0; 
-		return this;
-	}
+	}	
 
 	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, float lightFactor,Block block ,int sideMask ) 
 	{
@@ -484,7 +488,7 @@ public final class BlockRenderer implements Disposable {
 	}
 
 	private IndexBufferObject createIBO(int indexCount) {
-		return new IndexBufferObject(true,indexCount); // 1 triangle
+		return new IndexBufferObject(true,indexCount); 
 	}		
 
 	@Override

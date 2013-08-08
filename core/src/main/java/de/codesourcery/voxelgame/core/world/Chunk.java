@@ -134,7 +134,7 @@ public final class Chunk
 	
 	public final Block[][][] blocks;
 	
-	public BlockRenderer blockRenderer;
+	public final BlockRenderer blockRenderer;
 	
 	private final BoundingBox box = new BoundingBox();
 	private int flags = FLAG_MESH_REBUILD_REQUIRED|FLAG_LIGHT_RECALCULATION_REQUIRED;
@@ -144,6 +144,7 @@ public final class Chunk
 		this.x = x;
 		this.y = y;
 		this.z = z;
+		this.blockRenderer = new BlockRenderer();
 		
 		blocks = new Block[BLOCKS_X][][];
 		for ( int i = 0 ; i < BLOCKS_X;i++) 
@@ -177,15 +178,15 @@ public final class Chunk
 		setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
 		setMeshRebuildRequired(true);
 		setLightRecalculationRequired(true);
-		chunkManager.chunkChanged( this );
 		
 		System.out.println("Deleted block "+blockX+"/"+blockY+"/"+blockZ+" of "+this);
 		
-		invalidateAdjacentChunks(blockX, blockY, blockZ, chunkManager);		
+		invalidateAdjacentChunks(blockX, blockY, blockZ, chunkManager);
+		
+		chunkManager.updateChunk( this );		
 	}
 
-	private void invalidateAdjacentChunks(int blockX, int blockY, int blockZ,
-			IChunkManager chunkManager)
+	private void invalidateAdjacentChunks(int blockX, int blockY, int blockZ,IChunkManager chunkManager)
 	{
 		// trigger mesh rebuild on adjacent chunks (but only if they're loaded)
 		// so that any block faces that might've been hidden and are now 
@@ -381,10 +382,7 @@ public final class Chunk
 	{
 		if ( ! isDisposed() ) 
 		{
-			if ( blockRenderer != null ) {
-				blockRenderer.dispose();
-				blockRenderer = null;
-			}
+			blockRenderer.dispose();
 			setFlag(FLAG_DISPOSED,true);
 		}
 	}
