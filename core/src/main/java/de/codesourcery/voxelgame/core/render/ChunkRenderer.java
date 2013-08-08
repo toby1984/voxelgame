@@ -146,9 +146,9 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		int sideCount = 0; // debug
 		int notCulled = 0; // debug
 
-		final float xOrig = chunk.bb.min.x;
-		final float yOrig = chunk.bb.min.y;
-		final float zOrig = chunk.bb.min.z;
+		final float xOrig = chunk.boundingBox.min.x;
+		final float yOrig = chunk.boundingBox.min.y;
+		final float zOrig = chunk.boundingBox.min.z;
 
 		final BlockRenderer renderer = chunk.blockRenderer;
 		renderer.begin();

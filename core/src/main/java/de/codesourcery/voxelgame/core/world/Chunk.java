@@ -4,6 +4,7 @@ import com.badlogic.gdx.math.Intersector;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.math.collision.Ray;
+import com.badlogic.gdx.utils.Pool.Poolable;
 
 import de.codesourcery.voxelgame.core.Block;
 import de.codesourcery.voxelgame.core.render.BlockRenderer;
@@ -14,7 +15,7 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
  *
  * @author tobias.gierke@voipfuture.com
  */
-public final class Chunk 
+public final class Chunk implements Poolable
 {
 	// number of blocks along X axis	
 	public static final int BLOCKS_X = 16; 
@@ -41,48 +42,6 @@ public final class Chunk
 	public static final float HALF_CHUNK_WIDTH = CHUNK_WIDTH/2.0f;
 	public static final float HALF_CHUNK_HEIGHT = CHUNK_HEIGHT/2.0f;
 	public static final float HALF_CHUNK_DEPTH = CHUNK_DEPTH/2.0f;	
-	
-	protected static final class ChunkKey 
-	{
-		public final int chunkX;
-		public final int chunkY;
-		public final int chunkZ;
-		
-		public ChunkKey(Chunk chunk) {
-			this.chunkX = chunk.x;
-			this.chunkY = chunk.y;
-			this.chunkZ = chunk.z;
-		}
-		
-		public ChunkKey(int chunkX, int chunkY, int chunkZ) 
-		{
-			this.chunkX = chunkX;
-			this.chunkY = chunkY;
-			this.chunkZ = chunkZ;
-		}
-
-		@Override
-		public int hashCode() {
-			int result = 31  + chunkX;
-			result = 31 * result + chunkY;
-			result = 31 * result + chunkZ;
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) 
-		{
-			if (this == obj) {
-				return true;
-			}
-			if (obj instanceof ChunkKey ) 
-			{
-				ChunkKey other = (ChunkKey ) obj;
-				return chunkX == other.chunkX && chunkY == other.chunkY &&  chunkZ == other.chunkZ;
-			}
-			return false;
-		}
-	}
 	
 	// FLAGS
 	
@@ -115,35 +74,51 @@ public final class Chunk
 	 */
 	public static final int FLAG_CHANGED_SINCE_LOAD = 32;	
 	
-	/**
-	 * Indicates that lighting of this chunk needs to be recalculated.
+	/* *********************
+	 * Make sure to reset any fields you add here ( see initialize(int,int,int) )
+	 * *********************
 	 */
-	public static final int FLAG_LIGHT_RECALCULATION_REQUIRED = 64;	
 	
-	// tile coordinates
-	public final int x;
-	public final int z; 
-	public final int y; 
+	// chunk coordinates
+	public int x;
+	public int z; 
+	public int y; 
 	
 	// AABB of this tile
-	private final Vector3 bbMin; 
-	private final Vector3 bbMax;
-	public  final BoundingBox bb;
+	public final BoundingBox boundingBox = new BoundingBox();
+	
+	// used as temporary storage
+	private final BoundingBox TMP_BB = new BoundingBox();
 	
 	public long accessCounter = 0;
 	
 	public final Block[][][] blocks;
 	
 	public final BlockRenderer blockRenderer;
+
+	private int flags = FLAG_MESH_REBUILD_REQUIRED;
 	
-	private final BoundingBox box = new BoundingBox();
-	private int flags = FLAG_MESH_REBUILD_REQUIRED|FLAG_LIGHT_RECALCULATION_REQUIRED;
-	
-	public Chunk(int x, int y,int z) 
+	public Chunk(int x,int y,int z) 
 	{
-		this.x = x;
-		this.y = y;
-		this.z = z;
+		this.blockRenderer = new BlockRenderer();
+		
+		blocks = new Block[BLOCKS_X][][];
+		for ( int i = 0 ; i < BLOCKS_X;i++) 
+		{
+			blocks[i] = new Block[BLOCKS_Y][];
+			for ( int j = 0 ; j < BLOCKS_Y;j++) {
+				Block[] tmp = new Block[BLOCKS_Z];
+				blocks[i][j]=tmp;
+				for ( int k = 0 ; k < BLOCKS_Z ; k++ ) {
+					tmp[k]=new Block();
+				}
+			}
+		}		
+		initialize(x,y,z);
+	}
+	
+	public Chunk() 
+	{
 		this.blockRenderer = new BlockRenderer();
 		
 		blocks = new Block[BLOCKS_X][][];
@@ -158,6 +133,13 @@ public final class Chunk
 				}
 			}
 		}
+	}
+	
+	public void initialize(int x, int y,int z) 
+	{
+		this.x = x;
+		this.y = y;
+		this.z = z;
 		
 		final float xMin = -HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
 		final float yMin = -HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
@@ -167,17 +149,34 @@ public final class Chunk
 		final float yMax = HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
 		final float zMax = HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;		
 		
-		bbMin = new Vector3(xMin,yMin,zMin);
-		bbMax = new Vector3(xMax,yMax,zMax);			
-		bb = new BoundingBox( bbMin , bbMax );
+		Vector3 bbMin = new Vector3(xMin,yMin,zMin);
+		Vector3 bbMax = new Vector3(xMax,yMax,zMax);		
+		boundingBox.set( bbMin , bbMax );	
+		flags = FLAG_MESH_REBUILD_REQUIRED;
+		accessCounter = 0;
 	}
+	
+	public static int calcChunkKey(int chunkX,int chunkY,int chunkZ) 
+	{
+		int result = 31  + chunkX;
+		result = 31 * result + chunkY;
+		result = 31 * result + chunkZ;
+		return result;
+	}
+	
+	public static int calcChunkKey(Chunk chunk) 
+	{
+		int result = 31  + chunk.x;
+		result = 31 * result + chunk.y;
+		result = 31 * result + chunk.z;
+		return result;
+	}		
 	
 	public void setBlockType(int blockX,int blockY,int blockZ,IChunkManager chunkManager,byte blockType) 
 	{
 		blocks[blockX][blockY][blockZ].type=blockType;
 		setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
 		setMeshRebuildRequired(true);
-		setLightRecalculationRequired(true);
 		
 		System.out.println("Deleted block "+blockX+"/"+blockY+"/"+blockZ+" of "+this);
 		
@@ -281,16 +280,16 @@ public final class Chunk
 	}	
 	
 	public Vector3 getCenter() {
-		return bb.getCenter();
+		return boundingBox.getCenter();
 	}
 	
 	public boolean containsPoint(Vector3 v) {
-		return bb.contains( v );
+		return boundingBox.contains( v );
 	}
 	
 	public boolean intersects(Ray ray) 
 	{
-		return Intersector.intersectRayBoundsFast( ray , bb );
+		return Intersector.intersectRayBoundsFast( ray , boundingBox );
 	}
 	
 	/**
@@ -317,9 +316,9 @@ public final class Chunk
 						continue;
 					}
 					
-					populateBlockBoundingBox( x , y, z , box );
+					populateBlockBoundingBox( x , y, z , TMP_BB );
 					
-					if ( Intersector.intersectRayBounds(ray, box,hitPointOnBlock) ) 
+					if ( Intersector.intersectRayBounds(ray, TMP_BB,hitPointOnBlock) ) 
 					{
 						float distance = hitPointOnBlock.dst2( ray.origin );
 						if ( ! hit || distance < distanceToHitSquared ) 
@@ -359,9 +358,9 @@ public final class Chunk
 	
 	private void populateBlockBoundingBox(int blockX,int blockY,int blockZ,BoundingBox box) 
 	{
-		final float xOrig = bb.min.x; 
-		final float yOrig = bb.min.y; 
-		final float zOrig = bb.min.z; 
+		final float xOrig = boundingBox.min.x; 
+		final float yOrig = boundingBox.min.y; 
+		final float zOrig = boundingBox.min.z; 
 		
 		float x1 = xOrig + blockX * BLOCK_WIDTH;
 		float y1 = yOrig + blockY * BLOCK_HEIGHT;
@@ -380,11 +379,8 @@ public final class Chunk
 	
 	public final void dispose() 
 	{
-		if ( ! isDisposed() ) 
-		{
-			blockRenderer.dispose();
-			setFlag(FLAG_DISPOSED,true);
-		}
+		blockRenderer.dispose();
+		setFlag(FLAG_DISPOSED,true);
 	}
 
 	public boolean getBlockContaining(Vector3 worldCoords, Hit hit) 
@@ -395,8 +391,8 @@ public final class Chunk
 			{
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
 				{
-					populateBlockBoundingBox( x , y , z , box );
-					if ( box.contains( worldCoords ) ) 
+					populateBlockBoundingBox( x , y , z , TMP_BB );
+					if ( TMP_BB.contains( worldCoords ) ) 
 					{
 						hit.blockX = x;
 						hit.blockY = y;
@@ -419,8 +415,8 @@ public final class Chunk
 				{
 					if ( ! blocks[x][y][z].isAirBlock() ) 
 					{
-						populateBlockBoundingBox( x , y , z , box );
-						if ( intersects(toTest, box ) )
+						populateBlockBoundingBox( x , y , z , TMP_BB );
+						if ( intersects(toTest, TMP_BB ) )
 						{
 							return true;
 						}
@@ -477,18 +473,6 @@ public final class Chunk
 		setFlag(FLAG_MESH_REBUILD_REQUIRED , rebuildRequired );
 	}
 	
-	public boolean isLightRecalculationRequired() {
-		return isFlagSet( FLAG_LIGHT_RECALCULATION_REQUIRED); 
-	}
-	
-	public void setLightRecalculationRequired(boolean rebuildRequired) 
-	{
-		if ( rebuildRequired ) {
-			System.out.println("Requesting lighing for "+this);
-		}
-		setFlag(FLAG_LIGHT_RECALCULATION_REQUIRED , rebuildRequired );
-	}	
-
 	public boolean isDisposed() {
 		return isFlagSet(FLAG_DISPOSED);
 	}
@@ -543,9 +527,6 @@ public final class Chunk
 		if ( isFlagSet( FLAG_MESH_REBUILD_REQUIRED ) ) {
 			result.append("REBUILD_REQUIRED | ");
 		}
-		if ( isFlagSet( FLAG_LIGHT_RECALCULATION_REQUIRED) ) {
-			result.append("LIGHTING_RECALC | ");
-		}	
 		if ( isFlagSet( FLAG_CHANGED_SINCE_LOAD) ) {
 			result.append("NEEDS_STORE | ");
 		}			
@@ -562,5 +543,10 @@ public final class Chunk
 			result.append("PINNED| ");
 		}		
 		return result.toString();
+	}
+
+	@Override
+	public void reset() {
+		dispose();
 	}	
 }

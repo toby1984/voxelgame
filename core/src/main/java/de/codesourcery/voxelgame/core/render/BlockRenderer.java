@@ -81,11 +81,16 @@ public final class BlockRenderer implements Disposable {
 	private static final int TEX_OFFSET_VERTEX_BOTTOM_RIGHT = 4;
 	private static final int TEX_OFFSET_VERTEX_BOTTOM_LEFT = 6;
 		
-	private final ShortArrayBuilder indexBuilder = new ShortArrayBuilder(10000,10000);
-	private final FloatArrayBuilder vertexBuilder = new FloatArrayBuilder(10000*ELEMENTS_PER_VERTEX,1000*ELEMENTS_PER_VERTEX);
+	private final ShortArrayBuilder indexBuilder = new ShortArrayBuilder(20000,1000);
+	private final FloatArrayBuilder vertexBuilder = new FloatArrayBuilder(100000,1000*ELEMENTS_PER_VERTEX);
 
+	public int maxIndexArraySize = 0;
+	public int maxVertexArraySize = 0;
+	
 	private VertexBufferObject vbo;
 	private IndexBufferObject ibo;
+	
+	private volatile boolean uploadDataToGPU = true;
 
 	private int vertexCount = 0;
 	
@@ -421,6 +426,15 @@ public final class BlockRenderer implements Disposable {
 	{
 		indexBuilder.end();
 		vertexBuilder.end();		
+		
+		if ( indexBuilder.actualSize() > maxIndexArraySize ) {
+			maxIndexArraySize = indexBuilder.actualSize();
+		}
+		if ( vertexBuilder.actualSize() > maxVertexArraySize ) {
+			maxVertexArraySize = vertexBuilder.actualSize();
+		}
+		
+		uploadDataToGPU = true;
 		return this;
 	}
 
@@ -437,22 +451,21 @@ public final class BlockRenderer implements Disposable {
 				System.out.println("Creating VBO for "+vertexCount+" vertices.");
 			}
 			vbo = createVBO( vertexCount );
+			uploadDataToGPU = true;
 		}
 
 		final int indexCount = indexBuilder.actualSize();
-		// glDrawElements uses UNSIGNED_SHORT and thus can draw at most 65535 indices at once
-		final int indexBufferSize = indexCount <= 65535 ? indexCount : 65535;
-		
-		if ( ibo == null ||  ibo.getNumMaxIndices() < indexBufferSize  ) 
+		if ( ibo == null ||  ibo.getNumMaxIndices() < indexCount  ) 
 		{
 			if ( ibo != null ) {
 				ibo.dispose();
 				ibo = null;
 			}
 			if ( DEBUG_PERFORMANCE ) {
-				System.out.println("Creating VBO for "+indexBufferSize+" indices.");
+				System.out.println("Creating VBO for "+indexCount+" indices.");
 			}
-			ibo = createIBO( indexBufferSize );
+			ibo = createIBO( indexCount );
+			uploadDataToGPU = true;
 		}	
 
 		if ( CULL_FACES ) {
@@ -465,11 +478,15 @@ public final class BlockRenderer implements Disposable {
 		vbo.bind( shader );
 		ibo.bind();
 		
+		if ( uploadDataToGPU ) {
+			vbo.setVertices( vertexBuilder.array , 0 , vertexBuilder.actualSize() );
+			ibo.setIndices( indexBuilder.array , 0 , indexBuilder.actualSize() );
+			uploadDataToGPU = false;
+		}
+		
 		int indicesRemaining = indexCount;
 		while ( indicesRemaining > 9 ) 
 		{
-			vbo.setVertices( vertexBuilder.array , 0 , vertexBuilder.actualSize() );
-			ibo.setIndices( indexBuilder.array , 0 , indexBuilder.actualSize() );
 			int indicesToDraw = indicesRemaining > 65535 ? 65535 : indicesRemaining;
 			Gdx.graphics.getGL20().glDrawElements(GL20.GL_TRIANGLES, indicesToDraw , GL20.GL_UNSIGNED_SHORT , 0);
 			indicesRemaining -= indicesToDraw;
@@ -502,5 +519,7 @@ public final class BlockRenderer implements Disposable {
 			ibo.dispose();
 			ibo = null;
 		}
+		uploadDataToGPU = true;
+		maxVertexArraySize = maxIndexArraySize = 0;
 	}
 }

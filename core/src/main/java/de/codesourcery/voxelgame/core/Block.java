@@ -54,9 +54,9 @@ public final class Block
 	
 	public static void populateWithCenter(Chunk chunk,int blockX,int blockY,int blockZ,Vector3 result) 
 	{
-		final float xOrig = chunk.bb.min.x;
-		final float yOrig = chunk.bb.min.y;
-		final float zOrig = chunk.bb.min.z;
+		final float xOrig = chunk.boundingBox.min.x;
+		final float yOrig = chunk.boundingBox.min.y;
+		final float zOrig = chunk.boundingBox.min.z;
 		
 		final float blockCenterX = xOrig + blockX * Chunk.BLOCK_WIDTH  + (Chunk.BLOCK_WIDTH*0.5f);
 		final float blockCenterY = yOrig + blockY * Chunk.BLOCK_HEIGHT + (Chunk.BLOCK_HEIGHT*0.5f);				

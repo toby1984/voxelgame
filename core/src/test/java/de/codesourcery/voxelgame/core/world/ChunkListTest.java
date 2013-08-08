@@ -13,20 +13,26 @@ public class ChunkListTest extends TestCase {
 	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
-		list = new ChunkList();
+		list = new ChunkList(50);
+	}
+	
+	private static Chunk createChunk(int x,int y,int z) {
+		Chunk result = new Chunk();
+		result.initialize(x,y,z);
+		return result;
 	}
 	
 	public void testAddOne() 
 	{
-		final Chunk c = new Chunk(1,2,3);
+		final Chunk c = createChunk(1,2,3);
 		list.add( c );
 		assertEquals( Arrays.asList( c ) , list.toList() );
 	}
 	
 	public void testAddTwo() {
 		
-		final Chunk c1 = new Chunk(1,2,3);
-		final Chunk c2 = new Chunk(1,2,3);
+		final Chunk c1 = createChunk(1,2,3);
+		final Chunk c2 = createChunk(1,2,3);
 		list.add( c1 );
 		list.add( c2 );
 		assertEquals( Arrays.asList( c1,c2 ) , list.toList() );
@@ -34,9 +40,9 @@ public class ChunkListTest extends TestCase {
 	
 	public void testAddThree() {
 		
-		final Chunk c1 = new Chunk(1,2,3);
-		final Chunk c2 = new Chunk(1,2,3);
-		final Chunk c3 = new Chunk(1,2,3);
+		final Chunk c1 = createChunk(1,2,3);
+		final Chunk c2 = createChunk(1,2,3);
+		final Chunk c3 = createChunk(1,2,3);
 		list.add( c1 );
 		list.add( c2 );
 		list.add( c3 );
@@ -45,9 +51,9 @@ public class ChunkListTest extends TestCase {
 	
 	public void testRemoveHead() {
 		
-		final Chunk c1 = new Chunk(1,2,3);
-		final Chunk c2 = new Chunk(1,2,3);
-		final Chunk c3 = new Chunk(1,2,3);
+		final Chunk c1 = createChunk(1,2,3);
+		final Chunk c2 = createChunk(1,2,3);
+		final Chunk c3 = createChunk(1,2,3);
 		list.add( c1 );
 		list.add( c2 );
 		list.add( c3 );
@@ -58,9 +64,9 @@ public class ChunkListTest extends TestCase {
 	
 	public void testRemoveMiddle() {
 		
-		final Chunk c1 = new Chunk(1,2,3);
-		final Chunk c2 = new Chunk(1,2,3);
-		final Chunk c3 = new Chunk(1,2,3);
+		final Chunk c1 = createChunk(1,2,3);
+		final Chunk c2 = createChunk(1,2,3);
+		final Chunk c3 = createChunk(1,2,3);
 		list.add( c1 );
 		list.add( c2 );
 		list.add( c3 );
@@ -71,9 +77,9 @@ public class ChunkListTest extends TestCase {
 	
 	public void testRemoveTail() {
 		
-		final Chunk c1 = new Chunk(1,2,3);
-		final Chunk c2 = new Chunk(1,2,3);
-		final Chunk c3 = new Chunk(1,2,3);
+		final Chunk c1 = createChunk(1,2,3);
+		final Chunk c2 = createChunk(1,2,3);
+		final Chunk c3 = createChunk(1,2,3);
 		list.add( c1 );
 		list.add( c2 );
 		list.add( c3 );
@@ -84,9 +90,9 @@ public class ChunkListTest extends TestCase {
 	
 	public void testRemoveAll() {
 		
-		final Chunk c1 = new Chunk(1,2,3);
-		final Chunk c2 = new Chunk(1,2,3);
-		final Chunk c3 = new Chunk(1,2,3);
+		final Chunk c1 = createChunk(1,2,3);
+		final Chunk c2 = createChunk(1,2,3);
+		final Chunk c3 = createChunk(1,2,3);
 		list.add( c1 );
 		list.add( c2 );
 		list.add( c3 );

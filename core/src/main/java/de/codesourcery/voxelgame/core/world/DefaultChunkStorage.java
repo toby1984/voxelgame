@@ -14,7 +14,7 @@ public class DefaultChunkStorage implements IChunkStorage
 {
 	private final ChunkFactory chunkFactory;
 	private final String chunkDirectory;
-	
+
 	public DefaultChunkStorage(File chunkDirectory, ChunkFactory chunkFactory) throws IOException 
 	{
 		if ( ! chunkDirectory.exists() ) {
@@ -24,12 +24,6 @@ public class DefaultChunkStorage implements IChunkStorage
 		}
 		this.chunkDirectory = chunkDirectory.getAbsolutePath();
 		this.chunkFactory = chunkFactory;
-	}
-
-	protected void dispose(Chunk chunk) 
-	{
-		System.out.println("dispose(): Chunk "+chunk);
-		chunk.dispose();
 	}
 
 	@Override
@@ -56,7 +50,7 @@ public class DefaultChunkStorage implements IChunkStorage
 		if ( ! f.exists() ) {
 			return null;
 		}
-		final Chunk result = new Chunk( chunkX , chunkY,chunkZ);
+		final Chunk result = chunkFactory.getChunkFromPool( chunkX , chunkY,chunkZ);
 		populateFromDisk( result );
 		return result;
 	}
@@ -119,10 +113,16 @@ public class DefaultChunkStorage implements IChunkStorage
 	@Override
 	public void unloadChunk(Chunk chunk) throws IOException
 	{
-		if ( chunk.hasChangedSinceLoad() ) 
+		try {
+			if ( USE_PERSISTENT_STORAGE && chunk.hasChangedSinceLoad() ) 
+			{
+				writeToDisk( chunk );
+				chunk.setChangedSinceLoad(false);
+			}
+		} 
+		finally 
 		{
-			writeToDisk( chunk );
-			chunk.setChangedSinceLoad(false);
+			chunkFactory.returnChunkToPool( chunk ); // chunk implements Poolable so dispose() will be called by libGDX pool implementation
 		}
 	}
 }

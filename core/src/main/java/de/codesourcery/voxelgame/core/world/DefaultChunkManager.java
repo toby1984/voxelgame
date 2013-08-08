@@ -2,11 +2,8 @@ package de.codesourcery.voxelgame.core.world;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -15,7 +12,6 @@ import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.lang.StringUtils;
@@ -24,12 +20,12 @@ import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.math.collision.Ray;
+import com.badlogic.gdx.utils.IntMap;
 
 import de.codesourcery.voxelgame.core.Block;
 import de.codesourcery.voxelgame.core.render.IChunkRenderer;
 import de.codesourcery.voxelgame.core.util.ChunkList;
 import de.codesourcery.voxelgame.core.util.ChunkList.ChunkListEntry;
-import de.codesourcery.voxelgame.core.world.Chunk.ChunkKey;
 
 
 public class DefaultChunkManager implements IChunkManager 
@@ -39,10 +35,10 @@ public class DefaultChunkManager implements IChunkManager
 
 	private final Vector3 TMP = new Vector3();
 
-	private final ChunkList chunkList = new ChunkList(); // holds all cached chunks
+	private final ChunkList chunkList = new ChunkList(MAX_CACHED_CHUNKS); // holds all cached chunks
 
 	// @GuardedBy( chunkMap )
-	private final Map<ChunkKey,Chunk> chunkMap = new HashMap<>(); // all cached chunks, indexed by position 
+	private final IntMap<Chunk> chunkMap = new IntMap<>(); // all cached chunks, indexed by position 
 
 	private final List<Chunk> bgVisibleChunks = new ArrayList<>(); // holds all chunks that are currently part of the view frustum
 
@@ -103,6 +99,7 @@ public class DefaultChunkManager implements IChunkManager
 
 	private synchronized List<Chunk> internalGetVisibleChunks() 
 	{
+		int chunksRebuild = 0;
 		accessCounter++;		
 		if ( rebuildVisibleList.get() || reloadWholeChunk.get() ) 
 		{
@@ -115,13 +112,13 @@ public class DefaultChunkManager implements IChunkManager
 				loadTime += System.currentTimeMillis();
 				
 				listUpdateTime = -System.currentTimeMillis();
-				updateVisibleChunksList();
+				chunksRebuild = updateVisibleChunksList();
 				listUpdateTime += System.currentTimeMillis();
 			} 
 			else if ( rebuildVisibleList.get() ) 
 			{
 				listUpdateTime = -System.currentTimeMillis();				
-				updateVisibleChunksList();
+				chunksRebuild = updateVisibleChunksList();
 				listUpdateTime += System.currentTimeMillis();
 			}
 
@@ -131,7 +128,7 @@ public class DefaultChunkManager implements IChunkManager
 			}
 			
 			if ( ( accessCounter - lastDebug ) >= 60 ) {
-				System.out.println("Chunk reload time: "+loadTime+" ms , visible_list_update: "+listUpdateTime+" ms");
+				System.out.println("Chunk reload time: "+loadTime+" ms , visible_list_update: "+listUpdateTime+" ms ("+chunksRebuild+" chunks rebuild)");
 				lastDebug = accessCounter;
 			}
 		}
@@ -140,8 +137,7 @@ public class DefaultChunkManager implements IChunkManager
 
 	private void reloadChunks() 
 	{
-		System.out.println("Reloading chunks around: "+cameraChunkX+" / "+cameraChunkY+" / "+cameraChunkZ);
-
+		// System.out.println("Reloading chunks around: "+cameraChunkX+" / "+cameraChunkY+" / "+cameraChunkZ);
 		synchronized ( chunkMap ) 
 		{
 			for ( Chunk chunk : chunkMap.values() ) {
@@ -161,7 +157,7 @@ public class DefaultChunkManager implements IChunkManager
 	@Override
 	public Chunk maybeGetChunk(int chunkX, int chunkY, int chunkZ) 
 	{
-		final ChunkKey key = new ChunkKey(chunkX,chunkY,chunkZ);
+		final int key = Chunk.calcChunkKey(chunkX,chunkY,chunkZ);
 		synchronized (chunkMap) {
 			Chunk newChunk = chunkMap.get( key );
 			if ( newChunk != null ) 
@@ -176,7 +172,7 @@ public class DefaultChunkManager implements IChunkManager
 	@Override
 	public Chunk getChunk(int chunkX, int chunkY, int chunkZ) 
 	{		
-		final ChunkKey key = new ChunkKey(chunkX,chunkY,chunkZ);
+		final int key = Chunk.calcChunkKey(chunkX, chunkY, chunkZ);
 		Chunk newChunk = null;
 		synchronized( chunkMap ) 
 		{
@@ -196,7 +192,7 @@ public class DefaultChunkManager implements IChunkManager
 
 			newChunk.accessCounter = accessCounter;	
 
-			if ( chunkMap.size() > MAX_CACHED_CHUNKS ) 
+			if ( chunkMap.size > MAX_CACHED_CHUNKS ) 
 			{
 				ChunkListEntry toRemovePrevious = null;
 				ChunkListEntry toRemove = null;
@@ -223,7 +219,7 @@ public class DefaultChunkManager implements IChunkManager
 					//			System.out.println("*** Disposing chunk "+chunkToRemove+" with access count "+chunkToRemove.accessCounter);
 
 					chunkList.remove( toRemove , toRemovePrevious );
-					chunkMap.remove( new ChunkKey( chunkToRemove ) );
+					chunkMap.remove( Chunk.calcChunkKey( chunkToRemove ) );
 					bgVisibleChunks.remove( chunkToRemove );
 					try {
 						chunkStorage.unloadChunk( chunkToRemove );
@@ -232,9 +228,8 @@ public class DefaultChunkManager implements IChunkManager
 						e.printStackTrace();
 						throw new RuntimeException(e);
 					}
-					chunkToRemove.dispose();
 				} else {
-					System.out.println("INFO: Extending chunk chache, cache size is now: "+chunkMap.size());
+					System.out.println("INFO: Extending chunk chache, cache size is now: "+chunkMap.size);
 				}
 			}
 
@@ -317,8 +312,13 @@ public class DefaultChunkManager implements IChunkManager
 
 	private final DynamicLatch latch = new DynamicLatch();
 
-	private void updateVisibleChunksList() 
+	private int updateVisibleChunksList() 
 	{
+		int chunksRebuild = 0;
+		
+		for ( Chunk chunk : bgVisibleChunks) {
+			chunk.setVisible(false);
+		}
 		bgVisibleChunks.clear();
 
 		latch.lock();
@@ -330,12 +330,14 @@ public class DefaultChunkManager implements IChunkManager
 			while( current != null ) 
 			{
 				final Chunk chunk=current.chunk;
-				final boolean isVisible = ! chunk.isEmpty() && camera.frustum.boundsInFrustum( chunk.bb );
+				final boolean isVisible = ! chunk.isEmpty() && camera.frustum.boundsInFrustum( chunk.boundingBox );
 				chunk.setVisible( isVisible );
 				if ( isVisible ) 
 				{
-					if ( chunk.isMeshRebuildRequired() || chunk.isLightRecalculationRequired() ) {
+					if ( chunk.isMeshRebuildRequired() ) 
+					{
 						updateChunk( chunk , latch );
+						chunksRebuild++;
 					}
 					bgVisibleChunks.add( chunk );
 				} 
@@ -357,6 +359,7 @@ public class DefaultChunkManager implements IChunkManager
 		{
 			latch.unlock();
 		}
+		return chunksRebuild;
 	}
 
 	protected ThreadPoolExecutor createWorkerPool() 
@@ -385,14 +388,16 @@ public class DefaultChunkManager implements IChunkManager
 
 	public void updateChunk(final Chunk chunk) 
 	{
+		// long time = -System.currentTimeMillis();
 		synchronized(chunk) 
 		{
-			if ( chunk.isLightRecalculationRequired() ) {
-				recalculateLighting(chunk);
-			}
-			if ( chunk.isMeshRebuildRequired() ) {
+			if ( chunk.isMeshRebuildRequired() ) 
+			{
+				recalculateLighting(chunk);				
 				chunkRenderer.setupMesh( chunk );
-			}		
+			}	
+			// time += System.currentTimeMillis();
+			// System.out.println("Chunk update: "+time+" ms ("+chunk.blockRenderer.maxVertexArraySize+" vertex elements, "+chunk.blockRenderer.maxIndexArraySize+" index elements");
 		}
 	}
 
@@ -435,7 +440,6 @@ public class DefaultChunkManager implements IChunkManager
 				}				
 			}			
 		}
-		chunk.setLightRecalculationRequired(false);
 	}
 
 	protected static void printChunk(List<Chunk> currentChunks) 
@@ -479,7 +483,7 @@ public class DefaultChunkManager implements IChunkManager
 			return;
 		}
 
-		System.out.println("*** CAMERA: Now at chunk ( "+this.cameraChunkX+","+this.cameraChunkY+","+this.cameraChunkZ+") ***");
+		// System.out.println("*** CAMERA: Now at chunk ( "+this.cameraChunkX+","+this.cameraChunkY+","+this.cameraChunkZ+") ***");
 		this.cameraChunkX = newCameraChunkX;
 		this.cameraChunkY = newCameraChunkY;
 		this.cameraChunkZ = newCameraChunkZ;		
@@ -597,10 +601,16 @@ public class DefaultChunkManager implements IChunkManager
 	{
 		synchronized( chunkMap ) 
 		{
-			for (Iterator<Entry<ChunkKey, Chunk>> it = chunkMap.entrySet() .iterator(); it.hasNext();) 
+			for (Iterator<com.badlogic.gdx.utils.IntMap.Entry<Chunk>> it = chunkMap.entries().iterator() ; it.hasNext();) 
 			{
-				final Entry<ChunkKey, Chunk> chunk = it.next();
-				chunk.getValue().dispose();
+				final com.badlogic.gdx.utils.IntMap.Entry<Chunk> chunk = it.next();
+				if ( chunk.value != null ) {
+					try {
+						chunkStorage.unloadChunk( chunk.value );
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 				it.remove();
 			}
 		}
