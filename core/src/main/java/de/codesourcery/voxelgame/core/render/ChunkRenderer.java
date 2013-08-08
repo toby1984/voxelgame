@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.List;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -20,7 +19,7 @@ import de.codesourcery.voxelgame.core.world.IChunkVisitor;
 
 public class ChunkRenderer implements Disposable , IChunkRenderer {
 
-	private static final boolean DEBUG_PERFORMANCE = true;
+	private static final boolean DEBUG_PERFORMANCE = false;
 
 	private long frame = 0;
 
@@ -202,6 +201,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		}
 		
 		renderer.end();
+		
 		chunk.setMeshRebuildRequired( false );		
 
 		if ( DEBUG_PERFORMANCE && (frame%60)==0) 
@@ -221,8 +221,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		if ( blockX == 0 ) 
 		{ 
 			// check adjacent chunk left of this one
-			Chunk adj = chunkManager.getChunk( chunk.x-1 ,  chunk.y ,  chunk.z );
-			if ( adj.isEmpty() || adj.blocks[Chunk.BLOCKS_X-1][blockY][blockZ].isTranslucentBlock() ) 
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x-1 ,  chunk.y ,  chunk.z );
+			if ( adj == null || adj.isEmpty() || adj.blocks[Chunk.BLOCKS_X-1][blockY][blockZ].isTranslucentBlock() ) 
 			{
 				sideMask = BlockRenderer.SIDE_LEFT;
 			}
@@ -233,8 +233,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		}
 
 		if ( blockX == Chunk.BLOCKS_X-1 ) { // check adjacent chunk right of this one
-			Chunk adj = chunkManager.getChunk( chunk.x+1 ,  chunk.y ,  chunk.z );
-			if ( adj.isEmpty() || adj.blocks[0][blockY][blockZ].isTranslucentBlock() ) 
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x+1 ,  chunk.y ,  chunk.z );
+			if ( adj == null || adj.isEmpty() || adj.blocks[0][blockY][blockZ].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_RIGHT;
 			}
@@ -246,8 +246,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 		// check along Y axis
 		if ( blockY == 0 ) { 
-			Chunk adj = chunkManager.getChunk( chunk.x ,  chunk.y+1 ,  chunk.z );
-			if ( adj.isEmpty() || adj.blocks[blockX][0][blockZ].isTranslucentBlock() ) 
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y+1 ,  chunk.z );
+			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][0][blockZ].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_BOTTOM;
 			}			
@@ -260,8 +260,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		if ( blockY == Chunk.BLOCKS_Y-1 ) 
 		{
 			// check adjacent chunk
-			Chunk adj = chunkManager.getChunk( chunk.x ,  chunk.y-1 ,  chunk.z );
-			if ( adj.isEmpty() || adj.blocks[blockX][Chunk.BLOCKS_Y-1][blockZ].isTranslucentBlock() ) 
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y-1 ,  chunk.z );
+			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][Chunk.BLOCKS_Y-1][blockZ].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_TOP;
 			}				
@@ -273,8 +273,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 		// check along Z axis
 		if ( blockZ == 0 ) { // check adjacent chunk
-			Chunk adj = chunkManager.getChunk( chunk.x ,  chunk.y ,  chunk.z-1 );	
-			if ( adj.isEmpty() || adj.blocks[blockX][blockY][Chunk.BLOCKS_Z-1].isTranslucentBlock() )  
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z-1 );	
+			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][blockY][Chunk.BLOCKS_Z-1].isTranslucentBlock() )  
 			{
 				sideMask |= BlockRenderer.SIDE_BACK;
 			}
@@ -285,8 +285,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		}	
 
 		if ( blockZ == Chunk.BLOCKS_Z-1 ) { // check adjacent chunk
-			Chunk adj = chunkManager.getChunk( chunk.x ,  chunk.y ,  chunk.z+1 );	
-			if ( adj.isEmpty() || adj.blocks[blockX][blockY][0].isTranslucentBlock() ) 
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z+1 );	
+			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][blockY][0].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_FRONT;
 			}
@@ -296,8 +296,5 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 			sideMask |= BlockRenderer.SIDE_FRONT;
 		}		
 		return sideMask;
-	}	
-
-	public void viewFrustumChanged() {
 	}	
 }

@@ -81,8 +81,8 @@ public final class BlockRenderer implements Disposable {
 	private static final int TEX_OFFSET_VERTEX_BOTTOM_RIGHT = 4;
 	private static final int TEX_OFFSET_VERTEX_BOTTOM_LEFT = 6;
 		
-	private final ShortArrayBuilder indexBuilder = new ShortArrayBuilder(20000,1000);
-	private final FloatArrayBuilder vertexBuilder = new FloatArrayBuilder(100000,1000*ELEMENTS_PER_VERTEX);
+	private final ShortArrayBuilder indexBuilder;
+	private final FloatArrayBuilder vertexBuilder;
 
 	public int maxIndexArraySize = 0;
 	public int maxVertexArraySize = 0;
@@ -93,6 +93,17 @@ public final class BlockRenderer implements Disposable {
 	private volatile boolean uploadDataToGPU = true;
 
 	private int vertexCount = 0;
+	
+	public BlockRenderer(int indexArraySize,int vertexArraySize) 
+	{
+		indexBuilder = new ShortArrayBuilder(indexArraySize,1000);
+		vertexBuilder = new FloatArrayBuilder(vertexArraySize,1000*ELEMENTS_PER_VERTEX);
+	}
+	
+	public BlockRenderer() 
+	{
+		this(20000,100000);
+	}
 	
 	public BlockRenderer begin() 
 	{
@@ -441,6 +452,10 @@ public final class BlockRenderer implements Disposable {
 	public void render(ShaderProgram shader) 
 	{
 		final int vertexCount = vertexBuilder.actualSize() / ELEMENTS_PER_VERTEX;
+		if ( vertexCount == 0 ) {
+			return;
+		}
+		
 		if ( vbo == null ||  vbo.getNumMaxVertices() < vertexCount  ) 
 		{
 			if ( vbo != null ) {

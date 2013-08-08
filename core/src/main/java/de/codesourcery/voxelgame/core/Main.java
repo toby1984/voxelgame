@@ -41,7 +41,7 @@ public class Main implements ApplicationListener {
 	public static final File ASSETS_PATH = new File("/home/tobi/workspace/voxelgame/assets/");
 
 	// start: debugging stuff
-	private static final boolean BENCHMARK_MODE = true;
+	private static final boolean BENCHMARK_MODE = false;
 	private static final int BENCHMARK_DURATION_SECONDS = 30;
 	
 	private long benchmarkStartTime;
@@ -102,21 +102,23 @@ public class Main implements ApplicationListener {
 
 		font = new BitmapFont();
 
-		chunkManager = new DefaultChunkManager(camera);
+		final DefaultChunkStorage chunkStorage;
 		try {
-			chunkManager.setChunkStorage( new DefaultChunkStorage( CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) ) );
-		} 
+			chunkStorage = new DefaultChunkStorage( CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) );
+		}
 		catch (IOException e) 
 		{
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
+		
+		chunkManager = new DefaultChunkManager(camera,chunkStorage);
 
 		shapeRenderer = new ShapeRenderer();
 
 		spriteBatch = new SpriteBatch();
 
-		camController = new FPSCameraController(camera,camera.direction)  //  new MyCameraInputProcessor(cam) 
+		camController = new FPSCameraController(camera,camera.direction)
 		{
 			private final Vector3 tmp = new Vector3();
 			private final BoundingBox bb = new BoundingBox();
@@ -258,7 +260,7 @@ public class Main implements ApplicationListener {
 
 		chunkRenderer = new ChunkRenderer(chunkManager,camController);    
 		chunkManager.setChunkRenderer( chunkRenderer ); // TODO: Circular dependency ChunkManager <-> ChunkRenderer ... not that nice...
-
+		chunkManager.cameraMoved();
 		Gdx.input.setInputProcessor(camController);	
 	}
 

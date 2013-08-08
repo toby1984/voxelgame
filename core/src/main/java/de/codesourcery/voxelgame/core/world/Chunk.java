@@ -45,10 +45,76 @@ public final class Chunk implements Poolable
 	
 	// FLAGS
 	
+	public static final class ChunkKey 
+	{
+		public final int x;
+		public final int y;
+		public final int z;
+		public final int hashCode;
+
+		public ChunkKey(int x, int y, int z) 
+		{
+			this.x = x;
+			this.y = y;
+			this.z = z;
+			int result = 31  + x;
+			result = 31 * result + y;
+			result = 31 * result + z;
+			hashCode = result;			
+		}
+
+		@Override
+		public int hashCode() {
+			return hashCode;
+		}
+
+		@Override
+		public boolean equals(Object obj) 
+		{
+			if ( obj instanceof ChunkKey) 
+			{
+				final ChunkKey other = (ChunkKey) obj;
+				return this.x == other.x && this.y == other.y && this.z == other.z;
+			}
+			return false;
+		}
+		
+		public static void populateBoundingBox(int x,int y,int z,BoundingBox boundingBox) 
+		{
+			final float xMin = -HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
+			final float yMin = -HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
+			final float zMin = -HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;
+			
+			final float xMax = HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
+			final float yMax = HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
+			final float zMax = HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;		
+			
+			boundingBox.min.set(xMin,yMin,zMin);
+			boundingBox.max.set(xMax,yMax,zMax);		
+			boundingBox.set( boundingBox.min , boundingBox.max );
+		}		
+		
+		public void populateCenter(Vector3 center) 
+		{
+			final float xMin = -HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
+			final float yMin = -HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
+			final float zMin = -HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;
+			
+			final float xMax = HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
+			final float yMax = HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
+			final float zMax = HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;		
+			
+			center.x = (xMin+xMax) / 2.0f;
+			center.y = (yMin+yMax) / 2.0f;
+			center.z = (zMin+zMax) / 2.0f;
+		}
+	}	
+	
 	/**
 	 * Indicates that this chunk's mesh needs to be rebuild.
 	 */
 	public static final int FLAG_MESH_REBUILD_REQUIRED = 1;
+	
 	/**
 	 * Indicates that this chunk intersects the current view frustum.
 	 */
@@ -63,11 +129,6 @@ public final class Chunk implements Poolable
 	 * Indicates this chunk contains only empty blocks.
 	 */
 	public static final int FLAG_IS_EMPTY = 8;	
-	
-	/**
-	 * Indicates this chunk is pinned in memory and must not be unloaded/disposed.
-	 */
-	public static final int FLAG_PINNED = 16;		
 	
 	/**
 	 * Indicates data of this chunk has been changed since it was loaded/created.
@@ -117,6 +178,22 @@ public final class Chunk implements Poolable
 		initialize(x,y,z);
 	}
 	
+	/**
+	 * Creates a NULL object chunk that only occupies
+	 * a minimal amount of memory.
+	 * 
+	 * @return
+	 */
+	public static Chunk createNULLChunk() {
+		return new Chunk(true);
+	}
+	
+	private Chunk(boolean dummy) 
+	{
+		this.blockRenderer = new BlockRenderer(1,1);
+		this.blocks = new Block[0][0][0];
+	}
+	
 	public Chunk() 
 	{
 		this.blockRenderer = new BlockRenderer();
@@ -141,17 +218,8 @@ public final class Chunk implements Poolable
 		this.y = y;
 		this.z = z;
 		
-		final float xMin = -HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
-		final float yMin = -HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
-		final float zMin = -HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;
+		ChunkKey.populateBoundingBox( x,y,z, this.boundingBox );
 		
-		final float xMax = HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
-		final float yMax = HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
-		final float zMax = HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;		
-		
-		Vector3 bbMin = new Vector3(xMin,yMin,zMin);
-		Vector3 bbMax = new Vector3(xMax,yMax,zMax);		
-		boundingBox.set( bbMin , bbMax );	
 		flags = FLAG_MESH_REBUILD_REQUIRED;
 		accessCounter = 0;
 	}
@@ -176,13 +244,14 @@ public final class Chunk implements Poolable
 	{
 		blocks[blockX][blockY][blockZ].type=blockType;
 		setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
+		
 		setMeshRebuildRequired(true);
 		
 		System.out.println("Deleted block "+blockX+"/"+blockY+"/"+blockZ+" of "+this);
 		
 		invalidateAdjacentChunks(blockX, blockY, blockZ, chunkManager);
 		
-		chunkManager.updateChunk( this );		
+		chunkManager.chunkChanged( this );		
 	}
 
 	private void invalidateAdjacentChunks(int blockX, int blockY, int blockZ,IChunkManager chunkManager)
@@ -477,6 +546,11 @@ public final class Chunk implements Poolable
 		return isFlagSet(FLAG_DISPOSED);
 	}
 	
+	public boolean isNotDisposed() 
+	{
+		return (flags & FLAG_DISPOSED) == 0;
+	}	
+	
 	public void setEmpty(boolean isEmpty) {
 		setFlag(FLAG_IS_EMPTY,isEmpty);
 	}
@@ -495,19 +569,6 @@ public final class Chunk implements Poolable
 	
 	public boolean hasChangedSinceLoad() {
 		return isFlagSet(FLAG_CHANGED_SINCE_LOAD);
-	}		
-	
-	public void setPinned(boolean isPinned) {
-		setFlag(FLAG_PINNED,isPinned);
-	}
-	
-	public boolean isPinned() {
-		return isFlagSet(FLAG_PINNED);
-	}	
-	
-	public boolean isNotPinned() 
-	{
-		return ( this.flags & FLAG_PINNED) == 0; 
 	}		
 	
 	private void setFlag(int mask,boolean enable) 
@@ -539,9 +600,6 @@ public final class Chunk implements Poolable
 		if ( isFlagSet( FLAG_IS_EMPTY) ) {
 			result.append("EMPTY | ");
 		}
-		if ( isFlagSet( FLAG_PINNED) ) {
-			result.append("PINNED| ");
-		}		
 		return result.toString();
 	}
 

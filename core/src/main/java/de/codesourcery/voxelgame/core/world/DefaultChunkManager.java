@@ -2,6 +2,8 @@ package de.codesourcery.voxelgame.core.world;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -10,9 +12,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -24,28 +25,24 @@ import com.badlogic.gdx.utils.IntMap;
 
 import de.codesourcery.voxelgame.core.Block;
 import de.codesourcery.voxelgame.core.render.IChunkRenderer;
-import de.codesourcery.voxelgame.core.util.ChunkList;
-import de.codesourcery.voxelgame.core.util.ChunkList.ChunkListEntry;
+import de.codesourcery.voxelgame.core.world.Chunk.ChunkKey;
 
 
 public class DefaultChunkManager implements IChunkManager 
 {
 	// the current chunk (3x3 chunks)
-	public static final int MAX_CACHED_CHUNKS = 90;
+	public static final int MAX_CACHED_CHUNKS = 100;
 
 	private final Vector3 TMP = new Vector3();
 
-	private final ChunkList chunkList = new ChunkList(MAX_CACHED_CHUNKS); // holds all cached chunks
+	private final ArrayList<Chunk> chunkList = new ArrayList<Chunk>(MAX_CACHED_CHUNKS); // holds all cached chunks
 
 	// @GuardedBy( chunkMap )
 	private final IntMap<Chunk> chunkMap = new IntMap<>(); // all cached chunks, indexed by position 
 
-	private final List<Chunk> bgVisibleChunks = new ArrayList<>(); // holds all chunks that are currently part of the view frustum
+	private final AtomicReference<ArrayList<Chunk>> visibleChunks = new AtomicReference<>( new ArrayList<Chunk>() ); // holds all chunks that are currently part of the view frustum	
 
-	// @GuardedBy( fgVisibleChunks )
-	private final List<Chunk> fgVisibleChunks = new ArrayList<>(); // holds all chunks that are currently part of the view frustum	
-
-	private IChunkStorage chunkStorage;
+	private final IChunkStorage chunkStorage;
 
 	public final Camera camera;
 
@@ -61,19 +58,191 @@ public class DefaultChunkManager implements IChunkManager
 	public int cameraChunkY = 0;	
 	public int cameraChunkZ = 0;
 
-	private final AtomicBoolean reloadWholeChunk= new AtomicBoolean(true);
-	private final AtomicBoolean rebuildVisibleList = new AtomicBoolean( false);
-
 	private long accessCounter = 0;
 
 	private IChunkRenderer chunkRenderer;
 
-	private final ThreadPoolExecutor workerPool = createWorkerPool();
+	private final ThreadPoolExecutor loaderThreadsPool;
+	private final ThreadPoolExecutor updaterThreadsPool;
 
-	public DefaultChunkManager(Camera camera) 
+	private final ChunkUpdaterThread chunkUpdater;
+	private final ChunkLoaderThread chunkLoader;
+
+	protected final class ChunkUpdaterThread extends Thread {
+
+		private final Chunk BLUE_PILL = Chunk.createNULLChunk();
+
+		private final ArrayBlockingQueue<Chunk> queue = new ArrayBlockingQueue<>(200);
+
+		public ChunkUpdaterThread() 
+		{
+			setDaemon(true);
+			setName("chunk-loader");
+		}
+
+		public void queueChunkUpdate(Chunk chunk) 
+		{
+			synchronized ( queue ) 
+			{
+				for ( Chunk c : queue ) 
+				{
+					if ( c.equals( chunk ) ) 
+					{
+						return;
+					}
+				}
+				queue.add( chunk );
+			}
+		}
+
+		@Override
+		public void run() 
+		{
+			while ( true ) 
+			{
+				final Chunk chunk;
+				try {
+					chunk = queue.take();
+				} 
+				catch (InterruptedException e) {
+					e.printStackTrace();
+					continue;
+				}
+				if ( chunk == BLUE_PILL ) {
+					break;
+				}
+				runAsyncUpdateChunk( chunk );
+			}
+		}
+
+		private void runAsyncUpdateChunk(final Chunk chunk) 
+		{
+			updaterThreadsPool.submit( new Runnable() 
+			{
+				@Override
+				public void run() 
+				{
+					synchronized( chunk ) 
+					{
+						if ( chunk.isMeshRebuildRequired() && ! chunk.isDisposed() ) 
+						{				
+							syncUpdateChunk(chunk);
+							updateVisibleChunksList();
+						}
+					}
+				}} );
+		}		
+
+		public void terminate() 
+		{
+			synchronized(queue) 
+			{
+				try {
+					queue.put( BLUE_PILL );
+				} 
+				catch (InterruptedException e) {
+					e.printStackTrace();
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+	}	
+
+	protected final class ChunkLoaderThread extends Thread {
+
+		private final ChunkKey BLUE_PILL = new ChunkKey(0,0,0);
+
+		private final ArrayBlockingQueue<ChunkKey> queue = new ArrayBlockingQueue<>(200);
+
+		public ChunkLoaderThread() 
+		{
+			setDaemon(true);
+			setName("chunk-loader");
+		}
+
+		public void queueChunkLoad(ChunkKey key) 
+		{
+			synchronized ( queue ) 
+			{
+				for ( ChunkKey c : queue ) 
+				{
+					if ( c.equals( key ) ) {
+						return;
+					}
+				}
+				queue.add( key );
+			}
+		}
+
+		@Override
+		public void run() 
+		{
+			while ( true ) 
+			{
+				final ChunkKey key;
+				try {
+					key = queue.take();
+				} 
+				catch (InterruptedException e) {
+					e.printStackTrace();
+					continue;
+				}
+				if ( key == BLUE_PILL ) {
+					break;
+				}
+				asyncLoadChunk( key.x , key.y , key.z );
+			}
+		}
+
+		private void asyncLoadChunk(final int chunkX, final int chunkY, final int chunkZ) 
+		{
+			loaderThreadsPool.submit( new Runnable() {
+
+				@Override
+				public void run() 
+				{
+					final int chunkKey = Chunk.calcChunkKey(chunkX, chunkY, chunkZ);
+					Chunk existing;
+					synchronized( chunkMap ) 
+					{
+						existing = chunkMap.get( chunkKey );
+					}
+					if ( existing == null )
+					{
+						existing = syncLoadChunk(chunkX, chunkY, chunkZ, chunkKey);
+					}
+				}} );
+		}		
+
+		public void terminate() 
+		{
+			synchronized(queue) 
+			{
+				try {
+					queue.put( BLUE_PILL );
+				} 
+				catch (InterruptedException e) {
+					e.printStackTrace();
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
+	}
+
+	public DefaultChunkManager(Camera camera,IChunkStorage chunkStorage) 
 	{
 		this.camera = camera;
-		cameraMoved();
+		this.chunkStorage = chunkStorage;
+
+		int cpuCount = Runtime.getRuntime().availableProcessors();
+		this.loaderThreadsPool=createWorkerPool( cpuCount , true );
+		this.updaterThreadsPool = createWorkerPool( cpuCount , true );
+
+		chunkLoader = new ChunkLoaderThread();
+		chunkLoader.start();
+
+		chunkUpdater = new ChunkUpdaterThread();
+		chunkUpdater.start();
 	}
 
 	public void setChunkRenderer(IChunkRenderer chunkRenderer) {
@@ -86,72 +255,88 @@ public class DefaultChunkManager implements IChunkManager
 	@Override
 	public void visitVisibleChunks(IChunkVisitor visitor) 
 	{
-		synchronized( fgVisibleChunks ) 
+		for ( Chunk chunk : internalGetVisibleChunks() ) 
 		{
-			for ( Chunk chunk : internalGetVisibleChunks() ) 
+			synchronized( chunk ) 
 			{
-				visitor.visit( chunk );
+				if ( ! chunk.isDisposed() ) {
+					visitor.visit( chunk );
+				}
 			}
 		}
 	}
-	
-	private long lastDebug = 0;
 
-	private synchronized List<Chunk> internalGetVisibleChunks() 
+	/**
+	 * Must ALWAYS be called while synchronized(fgVisibleChunks)
+	 * @return
+	 */
+	private List<Chunk> internalGetVisibleChunks() 
 	{
-		int chunksRebuild = 0;
-		accessCounter++;		
-		if ( rebuildVisibleList.get() || reloadWholeChunk.get() ) 
-		{
-			long loadTime = 0;
-			long listUpdateTime = 0;
-			if ( reloadWholeChunk.get() ) 
-			{
-				loadTime = -System.currentTimeMillis();
-				reloadChunks();
-				loadTime += System.currentTimeMillis();
-				
-				listUpdateTime = -System.currentTimeMillis();
-				chunksRebuild = updateVisibleChunksList();
-				listUpdateTime += System.currentTimeMillis();
-			} 
-			else if ( rebuildVisibleList.get() ) 
-			{
-				listUpdateTime = -System.currentTimeMillis();				
-				chunksRebuild = updateVisibleChunksList();
-				listUpdateTime += System.currentTimeMillis();
-			}
-
-			synchronized( fgVisibleChunks ) {
-				fgVisibleChunks.clear();
-				fgVisibleChunks.addAll( bgVisibleChunks );
-			}
-			
-			if ( ( accessCounter - lastDebug ) >= 60 ) {
-				System.out.println("Chunk reload time: "+loadTime+" ms , visible_list_update: "+listUpdateTime+" ms ("+chunksRebuild+" chunks rebuild)");
-				lastDebug = accessCounter;
-			}
-		}
-		return fgVisibleChunks;
+		accessCounter++;
+		return visibleChunks.get();
 	}
 
-	private void reloadChunks() 
+	private final Vector3 TMP_V1 = new Vector3();
+	private final Vector3 TMP_V2 = new Vector3();
+
+	private void cameraMovedToNewChunk() 
 	{
 		// System.out.println("Reloading chunks around: "+cameraChunkX+" / "+cameraChunkY+" / "+cameraChunkZ);
+		final List<ChunkKey> toLoad = new ArrayList<>();
 		synchronized ( chunkMap ) 
 		{
-			for ( Chunk chunk : chunkMap.values() ) {
-				chunk.setPinned(false);
-			}
-			for ( int deltaX = -3 ; deltaX <= 3 ; deltaX++ ) 
+			for ( int deltaX = -5 ; deltaX <= 5 ; deltaX++ ) 
 			{
-				for ( int deltaZ = -3 ; deltaZ <= 3 ; deltaZ++ ) 
+				for ( int deltaZ = -5 ; deltaZ <= 5 ; deltaZ++ ) 
 				{
-					getChunk( cameraChunkX + deltaX , 0 , cameraChunkZ+deltaZ ).setFlags(Chunk.FLAG_PINNED);
+					final int key = Chunk.calcChunkKey(cameraChunkX + deltaX , 0 , cameraChunkZ+deltaZ);
+					if ( ! chunkMap.containsKey( key ) )
+					{
+						toLoad.add( new ChunkKey( cameraChunkX + deltaX , 0 , cameraChunkZ+deltaZ ) );
+					} 
 				}			
 			}
 		}
-		reloadWholeChunk.set( false );	
+
+		if ( ! toLoad.isEmpty() ) 
+		{ 
+			// schedule chunk loading by proximity to view direction
+			final Vector3 pointInCameraDirection = new Vector3(camera.direction).scl( 1000 );
+			pointInCameraDirection.add( camera.position );
+
+			Collections.sort( toLoad , new Comparator<ChunkKey>()  
+					{
+				@Override
+				public int compare(ChunkKey o1, ChunkKey o2) 
+				{
+					o1.populateCenter( TMP_V1 );
+					o2.populateCenter( TMP_V2 );
+					float dist1 = TMP_V1.dst2( pointInCameraDirection );
+					float dist2 = TMP_V2.dst2( pointInCameraDirection );
+					if ( dist1 < dist2 ) {
+						return -1;
+					} 
+					if ( dist1 > dist2 ) {
+						return 1; 
+					}
+					return 0;
+				}
+					});
+
+			for ( ChunkKey key : toLoad ) 
+			{
+				chunkLoader.queueChunkLoad( key );
+			}			
+			// updateVisibleChunksList() will be called after each chunk load
+			// so no need to do it here
+		} 
+		else 
+		{
+			// no chunks loaded but since this method gets called by cameraMoved()
+			// the view frustum has changed and thus an already loaded chunk 
+			// might've become visible
+			updateVisibleChunksList();
+		}
 	}
 
 	@Override
@@ -173,204 +358,178 @@ public class DefaultChunkManager implements IChunkManager
 	public Chunk getChunk(int chunkX, int chunkY, int chunkZ) 
 	{		
 		final int key = Chunk.calcChunkKey(chunkX, chunkY, chunkZ);
-		Chunk newChunk = null;
 		synchronized( chunkMap ) 
 		{
-			newChunk = chunkMap.get( key );
+			Chunk newChunk = chunkMap.get( key );
 			if ( newChunk != null ) 
 			{
 				newChunk.accessCounter = accessCounter;
 				return newChunk;
 			}
-
-			try {
-				newChunk = chunkStorage.loadChunk( chunkX , chunkY , chunkZ );
-			} catch (IOException e) {
-				e.printStackTrace();
-				throw new RuntimeException(e);
-			}
-
-			newChunk.accessCounter = accessCounter;	
-
-			if ( chunkMap.size > MAX_CACHED_CHUNKS ) 
-			{
-				ChunkListEntry toRemovePrevious = null;
-				ChunkListEntry toRemove = null;
-				ChunkListEntry previous = null;
-				ChunkListEntry entry = chunkList.head;
-				while ( entry != null ) 
-				{
-					Chunk tmp = entry.chunk;
-					if ( tmp.isInvisible() && tmp.isNotPinned() ) 
-					{
-						if ( toRemove == null || tmp.accessCounter < toRemove.chunk.accessCounter ) {
-							toRemovePrevious = previous;
-							toRemove = entry;
-						}
-					}
-					previous = entry;
-					entry = entry.next;
-				}
-
-				if ( toRemove != null ) 
-				{
-					Chunk chunkToRemove = toRemove.chunk;
-
-					//			System.out.println("*** Disposing chunk "+chunkToRemove+" with access count "+chunkToRemove.accessCounter);
-
-					chunkList.remove( toRemove , toRemovePrevious );
-					chunkMap.remove( Chunk.calcChunkKey( chunkToRemove ) );
-					bgVisibleChunks.remove( chunkToRemove );
-					try {
-						chunkStorage.unloadChunk( chunkToRemove );
-					} 
-					catch (IOException e) {
-						e.printStackTrace();
-						throw new RuntimeException(e);
-					}
-				} else {
-					System.out.println("INFO: Extending chunk chache, cache size is now: "+chunkMap.size);
-				}
-			}
-
-			chunkMap.put( key , newChunk );
-			chunkList.add( newChunk );
 		}
-		return newChunk;
+		return syncLoadChunk(chunkX,chunkY,chunkZ , key );
 	}	
 
-	protected static final class DynamicLatch 
+	private Chunk syncLoadChunk(int chunkX, int chunkY, int chunkZ,int chunkKey) 
 	{
-		private final Object LOCK = new Object();
-		private int waitCount=0;
-		private boolean notifyCalled = false;
-
-		private final ReentrantLock USER_LOCK = new ReentrantLock();
-
-		public DynamicLatch() {
-		}
-
-		public void lock() {
-			USER_LOCK.lock();
-		}
-
-		public void unlock() {
-			USER_LOCK.unlock();
-		}		
-
-		public void reset() 
+		// load chunk
+		final Chunk newChunk;
+		try {
+			newChunk = chunkStorage.loadChunk( chunkX , chunkY , chunkZ );
+		} 
+		catch (IOException e) 
 		{
-			synchronized(LOCK) 
-			{
-				waitCount=0;
-				notifyCalled = true;
-
-				LOCK.notifyAll();
-
-				notifyCalled = false;				
-			}
+			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 
-		public void countUp() 
-		{
-			synchronized(LOCK) 
-			{
-				waitCount++;	
-			}
+		// check chunk visibility
+		final boolean chunkVisible = this.camera.frustum.boundsInFrustum( newChunk.boundingBox );
+		newChunk.setVisible(  chunkVisible );
+
+		// loadChunk() ( disk access!) might've taken a long time, check whether a concurrent load happened already
+		Chunk existing=null;		
+		synchronized( chunkMap ) 
+		{		
+			existing = chunkMap.get( chunkKey );
 		}
 
-		public void countDown() 
+		// update visible chunks BEFORE adding it them to the internal map
+		// so the render thread does not see chunks that require a rebuid
+		if ( existing == null && chunkVisible ) 
 		{
-			synchronized(LOCK) 
+			syncUpdateChunk(newChunk);
+		} 
+
+		Chunk chunkToEvict = null;		
+		synchronized( chunkMap ) 
+		{		
+			// updateChunk() takes a long time, check if another caller finished in the meantime ...
+			existing = chunkMap.get( chunkKey );
+			if ( existing == null ) 
 			{
-				if ( waitCount > 0 ) 
-				{
-					waitCount--;
-					if ( waitCount == 0 )
+				synchronized( chunkList ) 
+				{				
+					if ( chunkMap.size > MAX_CACHED_CHUNKS ) 
 					{
-						notifyCalled=true;
-						LOCK.notifyAll();
+						int indexToRemove = -1;
+						int index = 0;
+						for ( Iterator<Chunk> it = chunkList.iterator() ; it.hasNext(); index++ ) 
+						{
+							final Chunk chunk = it.next();
+							if ( chunk.isInvisible() ) 
+							{
+								if ( chunkToEvict == null || chunk.accessCounter < chunkToEvict.accessCounter ) 
+								{
+									indexToRemove=index;
+									chunkToEvict=chunk;
+								}
+							}						
+						}
+						if ( chunkToEvict != null ) 
+						{
+							chunkMap.remove( Chunk.calcChunkKey( chunkToEvict ) );							
+							chunkList.remove( indexToRemove );
+						} else {
+							System.out.println("INFO: Extending chunk chache, cache size is now: "+chunkMap.size);
+						}
 					}
+					newChunk.accessCounter = accessCounter;
+					chunkMap.put( chunkKey , newChunk );
+					chunkList.add( newChunk );					
 				}
+
 			}
 		}
 
-		public void await() throws InterruptedException 
+		if ( chunkToEvict != null ) 
 		{
-			synchronized(LOCK) 
-			{			
-				while ( waitCount != 0 )
+			try 
+			{
+				synchronized(chunkToEvict) 
 				{
-					LOCK.wait(3*1000);
-					if ( ! notifyCalled ) {
-						System.err.println("Latch#await() returned either because 3 second timeout elapsed or a spurious wakeup occured");
-					}
+					chunkStorage.unloadChunk( chunkToEvict );
 				}
-			}
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
+			}			
 		}
+
+		if ( existing != null ) 
+		{
+			System.err.println("-- Disposing chunk, concurrent update already created another instance");
+			try 
+			{
+				chunkStorage.unloadChunk( newChunk );
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+			return existing;
+		}
+
+
+		if ( chunkVisible ) 
+		{
+			addVisibleChunks();
+		} 
+		else 
+		{
+			// chunk is not visible (yet) , schedule asynchronous update
+			queueAsyncChunkUpdate( newChunk );			
+		}
+		return newChunk;
 	}
 
-	private final DynamicLatch latch = new DynamicLatch();
-
-	private int updateVisibleChunksList() 
+	private void queueAsyncChunkUpdate(Chunk chunk) {
+		chunkUpdater.queueChunkUpdate( chunk );
+	}
+	
+	private void addVisibleChunks()
 	{
-		int chunksRebuild = 0;
-		
-		for ( Chunk chunk : bgVisibleChunks) {
-			chunk.setVisible(false);
-		}
-		bgVisibleChunks.clear();
-
-		latch.lock();
-		try 
+		final ArrayList<Chunk> tmpList=new ArrayList<Chunk>();
+		synchronized( chunkList ) 
 		{
-			latch.reset();
+			for ( Chunk chunk : chunkList) 
+			{ 
+				if ( chunk.isVisible() && chunk.isNotDisposed() && !chunk.isMeshRebuildRequired() ) {
+					{
+						tmpList.add( chunk );
+					}
+				}
+			}
+		}
+		visibleChunks.set(tmpList);
+	}
 
-			ChunkListEntry current = chunkList.head;
-			while( current != null ) 
+	private void updateVisibleChunksList() 
+	{
+		final ArrayList<Chunk> tmpList = new ArrayList<>();
+		synchronized( chunkList ) 
+		{
+			for ( Chunk chunk : chunkList) 
 			{
-				final Chunk chunk=current.chunk;
 				final boolean isVisible = ! chunk.isEmpty() && camera.frustum.boundsInFrustum( chunk.boundingBox );
 				chunk.setVisible( isVisible );
-				if ( isVisible ) 
+				if ( isVisible && ! chunk.isDisposed() ) 
 				{
 					if ( chunk.isMeshRebuildRequired() ) 
 					{
-						updateChunk( chunk , latch );
-						chunksRebuild++;
+						queueAsyncChunkUpdate( chunk );
+					} else {
+						tmpList.add( chunk );
 					}
-					bgVisibleChunks.add( chunk );
 				} 
-				current = current.next;
 			}
-
-			try 
-			{
-				latch.await();
-			} 
-			catch (InterruptedException e) 
-			{
-				e.printStackTrace();
-				throw new RuntimeException(e);
-			}
-			rebuildVisibleList.set( false );
-		} 
-		finally 
-		{
-			latch.unlock();
 		}
-		return chunksRebuild;
+		visibleChunks.set(tmpList);
 	}
 
-	protected ThreadPoolExecutor createWorkerPool() 
+	protected ThreadPoolExecutor createWorkerPool(int threadCount,boolean fifo) 
 	{
-		int threadCount = Runtime.getRuntime().availableProcessors();
-		if ( threadCount > 2 ) {
-			threadCount -= 2; // reserve two CPU cores for libgdx rendering and UI thread
-		} else {
-			threadCount=1;
-		}
-		final BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(150);
+		final BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(350,fifo);
 		final ThreadFactory threadFactory = new ThreadFactory() {
 
 			private final AtomicInteger threadCounter = new AtomicInteger(1);
@@ -386,38 +545,19 @@ public class DefaultChunkManager implements IChunkManager
 			return new ThreadPoolExecutor( threadCount, threadCount, 60, TimeUnit.SECONDS , queue , threadFactory , new CallerRunsPolicy() );
 	}
 
-	public void updateChunk(final Chunk chunk) 
+	@Override
+	public void chunkChanged(Chunk chunk) 
 	{
-		// long time = -System.currentTimeMillis();
-		synchronized(chunk) 
-		{
-			if ( chunk.isMeshRebuildRequired() ) 
-			{
-				recalculateLighting(chunk);				
-				chunkRenderer.setupMesh( chunk );
-			}	
-			// time += System.currentTimeMillis();
-			// System.out.println("Chunk update: "+time+" ms ("+chunk.blockRenderer.maxVertexArraySize+" vertex elements, "+chunk.blockRenderer.maxIndexArraySize+" index elements");
-		}
+		queueAsyncChunkUpdate( chunk );
 	}
 
-	private void updateChunk(final Chunk chunk,final DynamicLatch latch) 
+	private void syncUpdateChunk(final Chunk chunk) 
 	{
-		latch.countUp();
-		workerPool.submit( new Runnable() 
+		synchronized(chunk) 
 		{
-			@Override
-			public void run() 
-			{
-				try 
-				{
-					updateChunk(chunk);
-				} 
-				finally 
-				{
-					latch.countDown();
-				}
-			}} );
+			recalculateLighting(chunk);				
+			chunkRenderer.setupMesh( chunk );
+		}
 	}
 
 	private void recalculateLighting(Chunk chunk) 
@@ -478,9 +618,9 @@ public class DefaultChunkManager implements IChunkManager
 
 		if ( newCameraChunkX == cameraChunkX && newCameraChunkY == cameraChunkY && newCameraChunkZ == cameraChunkZ) 
 		{
-			// camera still on same chunk
-			rebuildVisibleList.set(true);
-			return;
+			// camera still on same chunk but view frustum has changed			
+			updateVisibleChunksList();
+			return; 
 		}
 
 		// System.out.println("*** CAMERA: Now at chunk ( "+this.cameraChunkX+","+this.cameraChunkY+","+this.cameraChunkZ+") ***");
@@ -488,7 +628,7 @@ public class DefaultChunkManager implements IChunkManager
 		this.cameraChunkY = newCameraChunkY;
 		this.cameraChunkZ = newCameraChunkZ;		
 
-		reloadWholeChunk.set(true);		
+		cameraMovedToNewChunk();
 	}
 
 	public static final class Hit 
@@ -517,26 +657,22 @@ public class DefaultChunkManager implements IChunkManager
 
 		boolean gotHit = false;
 		float distanceToHitSquared =0;
-
 		Vector3 blockHit = new Vector3(); // block((int) x,(int) y,(int) z) coordinates inside chunk being hit
 
-		synchronized( fgVisibleChunks ) 
+		for ( Chunk chunk : internalGetVisibleChunks() ) 
 		{
-			for ( Chunk chunk : internalGetVisibleChunks() ) 
-			{
-				if ( chunk.intersects( ray ) && chunk.getClosestIntersection( ray , blockHit , hit.hitPointOnBlock ) ) 
-				{ 
-					float distance = hit.hitPointOnBlock.dst2( ray.origin );
-					if ( ! gotHit || distance < distanceToHitSquared ) 
-					{
-						gotHit = true;
-						TMP.set( hit.hitPointOnBlock );
-						hit.chunk = chunk;
-						hit.blockX = (int) blockHit.x;
-						hit.blockY = (int) blockHit.y;
-						hit.blockZ = (int) blockHit.z;
-						distanceToHitSquared = distance;
-					}
+			if ( chunk.intersects( ray ) && chunk.getClosestIntersection( ray , blockHit , hit.hitPointOnBlock ) ) 
+			{ 
+				float distance = hit.hitPointOnBlock.dst2( ray.origin );
+				if ( ! gotHit || distance < distanceToHitSquared ) 
+				{
+					gotHit = true;
+					TMP.set( hit.hitPointOnBlock );
+					hit.chunk = chunk;
+					hit.blockX = (int) blockHit.x;
+					hit.blockY = (int) blockHit.y;
+					hit.blockZ = (int) blockHit.z;
+					distanceToHitSquared = distance;
 				}
 			}
 		}
@@ -552,18 +688,15 @@ public class DefaultChunkManager implements IChunkManager
 	@Override
 	public boolean getContainingBlock(Vector3 worldCoords,Hit hit) 
 	{
-		synchronized( fgVisibleChunks ) 
+		for ( Chunk chunk : internalGetVisibleChunks() ) 
 		{
-			for ( Chunk chunk : internalGetVisibleChunks() ) 
+			if ( chunk.containsPoint( worldCoords ) ) 
 			{
-				if ( chunk.containsPoint( worldCoords ) ) 
-				{
-					hit.chunk = chunk;
-					if ( chunk.getBlockContaining(worldCoords,hit) ) {
-						return true;
-					} 
-					System.out.println("ERROR: Failed to find block containing "+worldCoords+" although "+chunk+" contains point "+worldCoords);
-				}
+				hit.chunk = chunk;
+				if ( chunk.getBlockContaining(worldCoords,hit) ) {
+					return true;
+				} 
+				System.out.println("ERROR: Failed to find block containing "+worldCoords+" although "+chunk+" contains point "+worldCoords);
 			}
 		}
 		return false;
@@ -575,30 +708,22 @@ public class DefaultChunkManager implements IChunkManager
 	@Override
 	public boolean intersectsNonEmptyBlock(BoundingBox bb)
 	{
-		synchronized( fgVisibleChunks ) 
-		{		
-			for ( Chunk chunk : internalGetVisibleChunks() ) 
+		for ( Chunk chunk : internalGetVisibleChunks() ) 
+		{
+			if ( chunk.intersectsNonEmptyBlock( bb ) ) 
 			{
-				if ( chunk.intersectsNonEmptyBlock( bb ) ) 
-				{
-					return true;
-				}
+				return true;
 			}
 		}
 		return false;
 	}
 
-	/* (non-Javadoc)
-	 * @see de.codesourcery.voxelgame.core.world.IChunkManager#setChunkManager(de.codesourcery.voxelgame.core.world.ChunkManager)
-	 */
-	@Override
-	public void setChunkStorage(IChunkStorage chunkManager) {
-		this.chunkStorage = chunkManager;
-	}
-
 	@Override
 	public void dispose() 
 	{
+		chunkLoader.terminate();
+		chunkUpdater.terminate();
+
 		synchronized( chunkMap ) 
 		{
 			for (Iterator<com.badlogic.gdx.utils.IntMap.Entry<Chunk>> it = chunkMap.entries().iterator() ; it.hasNext();) 
@@ -613,11 +738,6 @@ public class DefaultChunkManager implements IChunkManager
 				}
 				it.remove();
 			}
-		}
-
-		synchronized( fgVisibleChunks ) {
-			fgVisibleChunks.clear();
-		}
-		bgVisibleChunks.clear();
+		}		
 	}
 }

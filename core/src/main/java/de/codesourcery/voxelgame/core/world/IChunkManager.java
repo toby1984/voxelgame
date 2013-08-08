@@ -9,11 +9,11 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
 
 public interface IChunkManager extends Disposable {
 
-	public abstract void visitVisibleChunks(IChunkVisitor visitor);
+	public void visitVisibleChunks(IChunkVisitor visitor);
 	
-	public abstract void updateChunk(Chunk chunk);
-
-	public abstract void cameraMoved();
+	public void chunkChanged(Chunk chunk);
+	
+	public void cameraMoved();
 
 	/**
 	 * Returns the tile closest to a ray's origin that is intersected by the ray.
@@ -21,15 +21,13 @@ public interface IChunkManager extends Disposable {
 	 * @param ray
 	 * @return
 	 */
-	public abstract boolean getClosestIntersection(Ray ray, Hit hit);
+	public boolean getClosestIntersection(Ray ray, Hit hit);
 
-	public abstract boolean getContainingBlock(Vector3 worldCoords, Hit hit);
+	public boolean getContainingBlock(Vector3 worldCoords, Hit hit);
 	
-	public abstract Chunk getChunk(int chunkX,int chunkY,int chunkZ);
+	public Chunk getChunk(int chunkX,int chunkY,int chunkZ);
 	
 	public Chunk maybeGetChunk(int chunkX, int chunkY, int chunkZ);	
 
-	public abstract boolean intersectsNonEmptyBlock(BoundingBox bb);
-
-	public abstract void setChunkStorage(IChunkStorage tileManager);
+	public boolean intersectsNonEmptyBlock(BoundingBox bb);
 }

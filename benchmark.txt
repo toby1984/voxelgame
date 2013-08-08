@@ -1,0 +1,5 @@
+Frame count: 1794
+min FPS    : 58
+avg FPS    : 58.244705 (59.78804)
+max FPS    : 62
+avg. FPS jitter: 0.04793757
