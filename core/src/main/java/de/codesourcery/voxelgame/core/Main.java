@@ -34,14 +34,14 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkStorage;
 
 public class Main implements ApplicationListener {
 
-	private static final boolean RESTRICT_CAMERA_TO_AIR_BLOCKS = true;
+	private static final boolean RESTRICT_CAMERA_TO_AIR_BLOCKS = false;
 
-	public static final File CHUNK_STORAGE = new File("/home/tgierke/tmp/chunks");
+	public static final File CHUNK_STORAGE = new File("/home/tobi/tmp/chunks");
 
-	public static final File ASSETS_PATH = new File("/home/tgierke/workspace/voxelgame/assets/");
+	public static final File ASSETS_PATH = new File("/home/tobi/workspace/voxelgame/assets/");
 
 	// start: debugging stuff
-	public static final boolean BENCHMARK_MODE = false;
+	public static final boolean BENCHMARK_MODE = true;
 	private static final int BENCHMARK_DURATION_SECONDS = 30;
 	
 	private long benchmarkStartTime;
@@ -91,11 +91,12 @@ public class Main implements ApplicationListener {
 	{
 		setupTextures();
 
+		final float y = Chunk.BLOCKS_Y*Chunk.BLOCK_HEIGHT+2*Chunk.BLOCK_HEIGHT;
 		camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-		camera.position.set(0f, 200f, 0.0000000001f);
-		camera.lookAt(0,200,-100);
+		camera.position.set(0f, y, 0.0000000001f);
+		camera.lookAt(0,y,-100);
 		camera.near = 1f;
-		camera.far = 1200f;
+		camera.far = 15000f;
 		camera.update();
 
 		skyBox = new SkyBox();

@@ -54,10 +54,11 @@ public class DefaultChunkManager implements IChunkManager
 	 * |  |  |  |  |  |
 	 * +--+--+--+--+--+
 	 */
-	public static final int LOAD_SURROUNDING_CHUNKS = 2;
+	public static final int LOAD_SURROUNDING_CHUNKS = 5;
 	
 	private final Vector3 TMP = new Vector3();
 
+	// @GuardedBy( chunkMap )
 	private final ArrayList<Chunk> chunkList = new ArrayList<Chunk>(MAX_CACHED_CHUNKS); // holds all cached chunks
 
 	// @GuardedBy( chunkMap )
@@ -287,15 +288,13 @@ public class DefaultChunkManager implements IChunkManager
 			{
 				if ( ! chunk.isDisposed() ) {
 					visitor.visit( chunk );
+				} else {
+					System.err.println("Won't render disposed chunk "+chunk);
 				}
 			}
 		}
 	}
 
-	/**
-	 * Must ALWAYS be called while synchronized(fgVisibleChunks)
-	 * @return
-	 */
 	private List<Chunk> internalGetVisibleChunks() 
 	{
 		accessCounter++;
@@ -326,7 +325,7 @@ public class DefaultChunkManager implements IChunkManager
 
 		if ( ! toLoad.isEmpty() ) 
 		{ 
-			// schedule chunk loading by proximity to view direction
+			// schedule chunk loading by proximity to point along view direction
 			final Vector3 pointInCameraDirection = new Vector3(camera.direction).scl( 1000 );
 			pointInCameraDirection.add( camera.position );
 
@@ -420,7 +419,7 @@ public class DefaultChunkManager implements IChunkManager
 			existing = chunkMap.get( chunkKey );
 		}
 
-		// update visible chunks BEFORE adding it them to the internal map
+		// update visible chunks BEFORE adding it to the internal map
 		// so the render thread does not see chunks that require a rebuid
 		if ( existing == null && chunkVisible ) 
 		{
@@ -434,38 +433,47 @@ public class DefaultChunkManager implements IChunkManager
 			existing = chunkMap.get( chunkKey );
 			if ( existing == null ) 
 			{
-				synchronized( chunkList ) 
-				{				
-					if ( chunkMap.size > MAX_CACHED_CHUNKS ) 
+				if ( chunkMap.size > MAX_CACHED_CHUNKS ) 
+				{
+					int indexToRemove = -1;
+					int index = 0;
+					for ( Iterator<Chunk> it = chunkList.iterator() ; it.hasNext(); index++ ) 
 					{
-						int indexToRemove = -1;
-						int index = 0;
-						for ( Iterator<Chunk> it = chunkList.iterator() ; it.hasNext(); index++ ) 
+						final Chunk chunk = it.next();
+						if ( chunk.isInvisible() ) 
 						{
-							final Chunk chunk = it.next();
-							if ( chunk.isInvisible() ) 
+							if ( chunkToEvict == null || chunk.accessCounter < chunkToEvict.accessCounter ) 
 							{
-								if ( chunkToEvict == null || chunk.accessCounter < chunkToEvict.accessCounter ) 
-								{
-									indexToRemove=index;
-									chunkToEvict=chunk;
-								}
-							}						
-						}
-						if ( chunkToEvict != null ) 
-						{
-							chunkMap.remove( Chunk.calcChunkKey( chunkToEvict ) );							
-							chunkList.remove( indexToRemove );
-						} else {
-							System.out.println("INFO: Extending chunk chache, cache size is now: "+chunkMap.size);
-						}
+								indexToRemove=index;
+								chunkToEvict=chunk;
+							}
+						}						
 					}
-					newChunk.accessCounter = accessCounter;
-					chunkMap.put( chunkKey , newChunk );
-					chunkList.add( newChunk );					
+					if ( chunkToEvict != null ) 
+					{
+						chunkMap.remove( Chunk.calcChunkKey( chunkToEvict ) );							
+						chunkList.remove( indexToRemove );
+					} else {
+						System.out.println("INFO: Extending chunk chache, cache size is now: "+chunkMap.size);
+					}
 				}
-
+				newChunk.accessCounter = accessCounter;
+				chunkMap.put( chunkKey , newChunk );
+				chunkList.add( newChunk );					
 			}
+		}
+		
+		if ( existing == null ) 
+		{
+			if ( chunkVisible ) 
+			{
+				addAllVisibleChunks();
+			} 
+			else 
+			{
+				// chunk is not visible (yet) , schedule asynchronous update
+				queueAsyncChunkUpdate( newChunk );			
+			}			
 		}
 
 		if ( chunkToEvict != null ) 
@@ -482,10 +490,10 @@ public class DefaultChunkManager implements IChunkManager
 				throw new RuntimeException(e);
 			}			
 		}
-
+		
 		if ( existing != null ) 
 		{
-			System.err.println("-- Disposing chunk, concurrent update already created another instance");
+			System.err.println("-- Disposing chunk "+newChunk+", concurrent update already created another instance");
 			try 
 			{
 				chunkStorage.unloadChunk( newChunk );
@@ -494,17 +502,6 @@ public class DefaultChunkManager implements IChunkManager
 				e.printStackTrace();
 			}
 			return existing;
-		}
-
-
-		if ( chunkVisible ) 
-		{
-			addAllVisibleChunks();
-		} 
-		else 
-		{
-			// chunk is not visible (yet) , schedule asynchronous update
-			queueAsyncChunkUpdate( newChunk );			
 		}
 		return newChunk;
 	}
@@ -516,7 +513,7 @@ public class DefaultChunkManager implements IChunkManager
 	private void addAllVisibleChunks()
 	{
 		final ArrayList<Chunk> tmpList=new ArrayList<Chunk>();
-		synchronized( chunkList ) 
+		synchronized( chunkMap ) 
 		{
 			for ( Chunk chunk : chunkList) 
 			{ 
@@ -532,7 +529,7 @@ public class DefaultChunkManager implements IChunkManager
 	private void updateVisibleChunksList() 
 	{
 		final ArrayList<Chunk> tmpList = new ArrayList<>();
-		synchronized( chunkList ) 
+		synchronized( chunkMap ) 
 		{
 			for ( Chunk chunk : chunkList) 
 			{

@@ -21,19 +21,19 @@ public final class Chunk implements Poolable
 	public static final int BLOCKS_X = 32; 
 	
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 64; 
+	public static final int BLOCKS_Y = 32; 
 	
 	// number of blocks along Z axis
 	public static final int BLOCKS_Z = 32; 
 	
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 6f;
+	public static final float BLOCK_WIDTH = 16f;
 	
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 6f;
+	public static final float BLOCK_HEIGHT = 16f;
 	
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 6f;	
+	public static final float BLOCK_DEPTH = 16f;	
 	
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)		
@@ -245,15 +245,14 @@ public final class Chunk implements Poolable
 	
 	public void setBlockType(int blockX,int blockY,int blockZ,IChunkManager chunkManager,byte blockType) 
 	{
-		blocks[blockX][blockY][blockZ].type=blockType;
-		setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
-		
-		setMeshRebuildRequired(true);
-		
-		System.out.println("Deleted block "+blockX+"/"+blockY+"/"+blockZ+" of "+this);
-		
+		synchronized(this) 
+		{
+			blocks[blockX][blockY][blockZ].type=blockType;
+			setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
+			setMeshRebuildRequired(true);
+			System.out.println("Changed type of block "+blockX+"/"+blockY+"/"+blockZ+" of "+this+" to new type "+blockType);
+		}
 		invalidateAdjacentChunks(blockX, blockY, blockZ, chunkManager);
-		
 		chunkManager.chunkChanged( this );		
 	}
 

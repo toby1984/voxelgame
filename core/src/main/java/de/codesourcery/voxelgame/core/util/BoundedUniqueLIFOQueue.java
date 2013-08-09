@@ -53,6 +53,7 @@ public final class BoundedUniqueLIFOQueue<T> implements Disposable {
 			T existing = map.get( hashCode ); 
 			if ( existing != null ) 
 			{
+				System.err.println("Already queued: "+obj);
 				return;
 			}
 			

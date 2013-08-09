@@ -29,7 +29,7 @@ public class ChunkFactory
      * avg. FPS jitter: 0.16177703
      * 
      * 	 */
-	private static final boolean USE_CHUNK_POOL = false;
+	private static final boolean USE_CHUNK_POOL = true;
 	
 	private final Pool<Chunk> pool = new Pool<Chunk>(10) {
 
@@ -137,13 +137,14 @@ public class ChunkFactory
 		final float chunkSize = 0.3f;
 		final float[] heightMap = rnd.createNoise3D( chunk.x*chunkSize , chunk.y*chunkSize, chunk.z*chunkSize  , chunkSize  , 5 , 4f );
 		
+		final float factor = 1.0f / (float) (Chunk.BLOCKS_Y*3f);
 		for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ ) 		
 		{
 			for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) 			
 			{	
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 				
 				{
-					float height = heightMap[z+x*Chunk.BLOCKS_Z+y*(Chunk.BLOCKS_X*Chunk.BLOCKS_Z)];
+					float height = heightMap[z+x*Chunk.BLOCKS_Z+y*(Chunk.BLOCKS_X*Chunk.BLOCKS_Z)]*(1.0f-y*factor);
 					Block block = chunk.blocks[x][y][z];
 					if ( y == 0 || ( height >= 0.5f && height <= 0.7f) ) 
 					{
