@@ -473,7 +473,7 @@ public class DefaultChunkManager implements IChunkManager
 
 		if ( chunkVisible ) 
 		{
-			addVisibleChunks();
+			addAllVisibleChunks();
 		} 
 		else 
 		{
@@ -487,17 +487,16 @@ public class DefaultChunkManager implements IChunkManager
 		chunkUpdater.queueChunkUpdate( chunk );
 	}
 	
-	private void addVisibleChunks()
+	private void addAllVisibleChunks()
 	{
 		final ArrayList<Chunk> tmpList=new ArrayList<Chunk>();
 		synchronized( chunkList ) 
 		{
 			for ( Chunk chunk : chunkList) 
 			{ 
-				if ( chunk.isVisible() && chunk.isNotDisposed() && !chunk.isMeshRebuildRequired() ) {
-					{
-						tmpList.add( chunk );
-					}
+				if ( chunk.isVisible() && chunk.isNotDisposed() && !chunk.isMeshRebuildRequired() ) 
+				{
+					tmpList.add( chunk );
 				}
 			}
 		}
