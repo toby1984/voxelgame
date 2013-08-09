@@ -34,14 +34,14 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkStorage;
 
 public class Main implements ApplicationListener {
 
-	private static final boolean RESTRICT_CAMERA_TO_AIR_BLOCKS = false;
+	private static final boolean RESTRICT_CAMERA_TO_AIR_BLOCKS = true;
 
-	public static final File CHUNK_STORAGE = new File("/home/tobi/tmp/chunks");
+	public static final File CHUNK_STORAGE = new File("/home/tgierke/tmp/chunks");
 
-	public static final File ASSETS_PATH = new File("/home/tobi/workspace/voxelgame/assets/");
+	public static final File ASSETS_PATH = new File("/home/tgierke/workspace/voxelgame/assets/");
 
 	// start: debugging stuff
-	private static final boolean BENCHMARK_MODE = false;
+	public static final boolean BENCHMARK_MODE = false;
 	private static final int BENCHMARK_DURATION_SECONDS = 30;
 	
 	private long benchmarkStartTime;

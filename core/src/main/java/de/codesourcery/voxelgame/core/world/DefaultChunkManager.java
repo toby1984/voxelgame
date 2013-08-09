@@ -12,6 +12,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -25,6 +26,8 @@ import com.badlogic.gdx.utils.IntMap;
 
 import de.codesourcery.voxelgame.core.Block;
 import de.codesourcery.voxelgame.core.render.IChunkRenderer;
+import de.codesourcery.voxelgame.core.util.BoundedUniqueLIFOQueue;
+import de.codesourcery.voxelgame.core.util.BoundedUniqueLIFOQueue.ShutdownException;
 import de.codesourcery.voxelgame.core.world.Chunk.ChunkKey;
 
 
@@ -33,6 +36,26 @@ public class DefaultChunkManager implements IChunkManager
 	// the current chunk (3x3 chunks)
 	public static final int MAX_CACHED_CHUNKS = 100;
 
+	/**
+	 * Number of chunks to load around the player (along X/Z axis).
+	 * 
+	 * Example: If set to 2, this will load 25 chunks (including the
+	 * one the player is at) total.
+	 * 
+	 * +--+--+--+--+--+
+	 * |  |  |  |  |  |
+	 * +--+--+--+--+--+
+	 * |  |  |  |  |  |
+	 * +--+--+--+--+--+ 
+	 * |  |  |P |  |  |
+	 * +--+--+--+--+--+
+	 * |  |  |  |  |  |
+	 * +--+--+--+--+--+
+	 * |  |  |  |  |  |
+	 * +--+--+--+--+--+
+	 */
+	public static final int LOAD_SURROUNDING_CHUNKS = 2;
+	
 	private final Vector3 TMP = new Vector3();
 
 	private final ArrayList<Chunk> chunkList = new ArrayList<Chunk>(MAX_CACHED_CHUNKS); // holds all cached chunks
@@ -67,32 +90,57 @@ public class DefaultChunkManager implements IChunkManager
 
 	private final ChunkUpdaterThread chunkUpdater;
 	private final ChunkLoaderThread chunkLoader;
+	private final VisibleListUpdaterThread visibleListUpdater;
+	
+	protected final class VisibleListUpdaterThread extends Thread {
+		
+		private final AtomicBoolean updateListRequired = new AtomicBoolean(false);
+		private volatile boolean terminate;
+		public VisibleListUpdaterThread() 
+		{
+			setDaemon(true);
+			setName("visibility-list-updater");
+		}		
+		
+		@Override
+		public void run() 
+		{
+			while ( ! terminate ) 
+			{
+				if ( updateListRequired.compareAndSet(true,false ) ) {
+					updateVisibleChunksList();
+				}
+				try {
+					java.lang.Thread.sleep(100);
+				} catch(Exception e) {
+				}
+			}
+		}
+		
+		public void queueUpdate() 
+		{
+			updateListRequired.set(true);
+		}
+		
+		public void terminate() {
+			this.terminate = true;
+			this.interrupt();
+		}
+	}
 
 	protected final class ChunkUpdaterThread extends Thread {
 
-		private final Chunk BLUE_PILL = Chunk.createNULLChunk();
-
-		private final ArrayBlockingQueue<Chunk> queue = new ArrayBlockingQueue<>(200);
+		private final BoundedUniqueLIFOQueue<Chunk> queue = new BoundedUniqueLIFOQueue<>(100,100);
 
 		public ChunkUpdaterThread() 
 		{
 			setDaemon(true);
-			setName("chunk-loader");
+			setName("chunk-update-enqueue-thread");
 		}
 
 		public void queueChunkUpdate(Chunk chunk) 
 		{
-			synchronized ( queue ) 
-			{
-				for ( Chunk c : queue ) 
-				{
-					if ( c.equals( chunk ) ) 
-					{
-						return;
-					}
-				}
-				queue.add( chunk );
-			}
+			queue.insert( chunk );
 		}
 
 		@Override
@@ -104,12 +152,12 @@ public class DefaultChunkManager implements IChunkManager
 				try {
 					chunk = queue.take();
 				} 
+				catch(ShutdownException e) {
+					break;
+				}
 				catch (InterruptedException e) {
 					e.printStackTrace();
 					continue;
-				}
-				if ( chunk == BLUE_PILL ) {
-					break;
 				}
 				runAsyncUpdateChunk( chunk );
 			}
@@ -127,7 +175,7 @@ public class DefaultChunkManager implements IChunkManager
 						if ( chunk.isMeshRebuildRequired() && ! chunk.isDisposed() ) 
 						{				
 							syncUpdateChunk(chunk);
-							updateVisibleChunksList();
+							visibleListUpdater.queueUpdate();
 						}
 					}
 				}} );
@@ -135,43 +183,23 @@ public class DefaultChunkManager implements IChunkManager
 
 		public void terminate() 
 		{
-			synchronized(queue) 
-			{
-				try {
-					queue.put( BLUE_PILL );
-				} 
-				catch (InterruptedException e) {
-					e.printStackTrace();
-					Thread.currentThread().interrupt();
-				}
-			}
+			queue.dispose();
 		}
 	}	
 
-	protected final class ChunkLoaderThread extends Thread {
-
-		private final ChunkKey BLUE_PILL = new ChunkKey(0,0,0);
-
-		private final ArrayBlockingQueue<ChunkKey> queue = new ArrayBlockingQueue<>(200);
+	protected final class ChunkLoaderThread extends Thread 
+	{
+		private final BoundedUniqueLIFOQueue<ChunkKey> queue = new BoundedUniqueLIFOQueue<>(100,100);
 
 		public ChunkLoaderThread() 
 		{
 			setDaemon(true);
-			setName("chunk-loader");
+			setName("chunk-load-enqueue-thread");
 		}
 
 		public void queueChunkLoad(ChunkKey key) 
 		{
-			synchronized ( queue ) 
-			{
-				for ( ChunkKey c : queue ) 
-				{
-					if ( c.equals( key ) ) {
-						return;
-					}
-				}
-				queue.add( key );
-			}
+			queue.insert( key );
 		}
 
 		@Override
@@ -183,12 +211,12 @@ public class DefaultChunkManager implements IChunkManager
 				try {
 					key = queue.take();
 				} 
+				catch(ShutdownException e) {
+					break;
+				}
 				catch (InterruptedException e) {
 					e.printStackTrace();
 					continue;
-				}
-				if ( key == BLUE_PILL ) {
-					break;
 				}
 				asyncLoadChunk( key.x , key.y , key.z );
 			}
@@ -216,16 +244,7 @@ public class DefaultChunkManager implements IChunkManager
 
 		public void terminate() 
 		{
-			synchronized(queue) 
-			{
-				try {
-					queue.put( BLUE_PILL );
-				} 
-				catch (InterruptedException e) {
-					e.printStackTrace();
-					Thread.currentThread().interrupt();
-				}
-			}
+			queue.dispose();
 		}
 	}
 
@@ -234,15 +253,22 @@ public class DefaultChunkManager implements IChunkManager
 		this.camera = camera;
 		this.chunkStorage = chunkStorage;
 
-		int cpuCount = Runtime.getRuntime().availableProcessors();
-		this.loaderThreadsPool=createWorkerPool( cpuCount , true );
-		this.updaterThreadsPool = createWorkerPool( cpuCount , true );
+		final int cpuCount = Runtime.getRuntime().availableProcessors();
+		
+		final int threadCount = 1+(cpuCount/3);
+		
+		final int chunkLoadToUpdateRatio=3; // 3:1
+
+		this.loaderThreadsPool = createWorkerPool( "chunk-loader-thread",threadCount*chunkLoadToUpdateRatio , true );
+		this.updaterThreadsPool = createWorkerPool( "chunk-updater-thread",threadCount , true );
 
 		chunkLoader = new ChunkLoaderThread();
-		chunkLoader.start();
-
+		visibleListUpdater = new VisibleListUpdaterThread();
 		chunkUpdater = new ChunkUpdaterThread();
+		
 		chunkUpdater.start();
+		visibleListUpdater.start();		
+		chunkLoader.start();		
 	}
 
 	public void setChunkRenderer(IChunkRenderer chunkRenderer) {
@@ -285,9 +311,9 @@ public class DefaultChunkManager implements IChunkManager
 		final List<ChunkKey> toLoad = new ArrayList<>();
 		synchronized ( chunkMap ) 
 		{
-			for ( int deltaX = -5 ; deltaX <= 5 ; deltaX++ ) 
+			for ( int deltaX = -LOAD_SURROUNDING_CHUNKS ; deltaX <= LOAD_SURROUNDING_CHUNKS ; deltaX++ ) 
 			{
-				for ( int deltaZ = -5 ; deltaZ <= 5 ; deltaZ++ ) 
+				for ( int deltaZ = -LOAD_SURROUNDING_CHUNKS ; deltaZ <= LOAD_SURROUNDING_CHUNKS ; deltaZ++ ) 
 				{
 					final int key = Chunk.calcChunkKey(cameraChunkX + deltaX , 0 , cameraChunkZ+deltaZ);
 					if ( ! chunkMap.containsKey( key ) )
@@ -335,7 +361,7 @@ public class DefaultChunkManager implements IChunkManager
 			// no chunks loaded but since this method gets called by cameraMoved()
 			// the view frustum has changed and thus an already loaded chunk 
 			// might've become visible
-			updateVisibleChunksList();
+			visibleListUpdater.queueUpdate();
 		}
 	}
 
@@ -526,7 +552,7 @@ public class DefaultChunkManager implements IChunkManager
 		visibleChunks.set(tmpList);
 	}
 
-	protected ThreadPoolExecutor createWorkerPool(int threadCount,boolean fifo) 
+	protected ThreadPoolExecutor createWorkerPool(final String poolName,int threadCount,boolean fifo) 
 	{
 		final BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(350,fifo);
 		final ThreadFactory threadFactory = new ThreadFactory() {
@@ -538,7 +564,7 @@ public class DefaultChunkManager implements IChunkManager
 			{
 				final Thread result = new Thread(r);
 				result.setDaemon( true );
-				result.setName( "chunk-manager-worker-"+threadCounter.incrementAndGet());
+				result.setName( poolName+"-"+threadCounter.incrementAndGet());
 				return result;
 			}};
 			return new ThreadPoolExecutor( threadCount, threadCount, 60, TimeUnit.SECONDS , queue , threadFactory , new CallerRunsPolicy() );
@@ -618,7 +644,7 @@ public class DefaultChunkManager implements IChunkManager
 		if ( newCameraChunkX == cameraChunkX && newCameraChunkY == cameraChunkY && newCameraChunkZ == cameraChunkZ) 
 		{
 			// camera still on same chunk but view frustum has changed			
-			updateVisibleChunksList();
+			visibleListUpdater.queueUpdate();
 			return; 
 		}
 
@@ -722,6 +748,7 @@ public class DefaultChunkManager implements IChunkManager
 	{
 		chunkLoader.terminate();
 		chunkUpdater.terminate();
+		chunkUpdater.terminate();		
 
 		synchronized( chunkMap ) 
 		{

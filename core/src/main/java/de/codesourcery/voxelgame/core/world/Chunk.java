@@ -18,22 +18,22 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
 public final class Chunk implements Poolable
 {
 	// number of blocks along X axis	
-	public static final int BLOCKS_X = 16; 
+	public static final int BLOCKS_X = 32; 
 	
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 32; 
+	public static final int BLOCKS_Y = 64; 
 	
 	// number of blocks along Z axis
-	public static final int BLOCKS_Z = 16; 
+	public static final int BLOCKS_Z = 32; 
 	
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 12f;
+	public static final float BLOCK_WIDTH = 6f;
 	
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 12f;
+	public static final float BLOCK_HEIGHT = 6f;
 	
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 12f;	
+	public static final float BLOCK_DEPTH = 6f;	
 	
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)		
@@ -159,6 +159,8 @@ public final class Chunk implements Poolable
 
 	private int flags = FLAG_MESH_REBUILD_REQUIRED;
 	
+	private int hashCode;
+	
 	public Chunk(int x,int y,int z) 
 	{
 		this.blockRenderer = new BlockRenderer();
@@ -178,20 +180,20 @@ public final class Chunk implements Poolable
 		initialize(x,y,z);
 	}
 	
-	/**
-	 * Creates a NULL object chunk that only occupies
-	 * a minimal amount of memory.
-	 * 
-	 * @return
-	 */
-	public static Chunk createNULLChunk() {
-		return new Chunk(true);
+	@Override
+	public boolean equals(Object obj) 
+	{
+		if ( obj instanceof Chunk) 
+		{
+			final Chunk other = (Chunk) obj;
+			return this.hashCode == other.hashCode && other.x == x && other.y == y && other.z == z;
+		}
+		return false;
 	}
 	
-	private Chunk(boolean dummy) 
-	{
-		this.blockRenderer = new BlockRenderer(1,1);
-		this.blocks = new Block[0][0][0];
+	@Override
+	public int hashCode() {
+		return hashCode;
 	}
 	
 	public Chunk() 
@@ -222,6 +224,7 @@ public final class Chunk implements Poolable
 		
 		flags = FLAG_MESH_REBUILD_REQUIRED;
 		accessCounter = 0;
+		this.hashCode = Chunk.calcChunkKey(x,y,z);
 	}
 	
 	public static int calcChunkKey(int chunkX,int chunkY,int chunkZ) 
