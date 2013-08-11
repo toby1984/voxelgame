@@ -528,39 +528,13 @@ public final class BlockRenderer implements Disposable {
 	@Override
 	public void dispose() 
 	{
-		if ( vbo != null || ibo != null ) // release buffers on OpenGL thread
-		{
-			final CountDownLatch latch = new CountDownLatch(1);
-			Gdx.app.postRunnable( new Runnable() {
-
-				@Override
-				public void run() 
-				{
-					try 
-					{
-						if ( vbo != null ) {
-							vbo.dispose();
-							vbo = null;
-						}
-						if ( ibo != null ) {
-							ibo.dispose();
-							ibo = null;
-						}
-					}
-					finally 
-					{
-						latch.countDown();
-					}
-				}
-			});
-			try {
-				latch.await();
-			} 
-			catch (InterruptedException e) 
-			{
-				e.printStackTrace();
-				Thread.currentThread().interrupt();
-			}
+		if ( vbo != null ) {
+			vbo.dispose();
+			vbo = null;
+		}
+		if ( ibo != null ) {
+			ibo.dispose();
+			ibo = null;
 		}
 
 		uploadDataToGPU = true;

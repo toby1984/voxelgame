@@ -431,6 +431,13 @@ public final class Chunk implements Poolable
 	    return "Chunk ("+x+","+y+","+z+" , "+flagsToString()+" )";
 	}
 	
+	/**
+	 * Disposes any resources associated with this chunk.
+	 * 
+	 * <p>This method <b>must</b> be called from the
+	 * OpenGL rendering thread if the chunk's block renderer has an active
+	 * VBO assigned.
+	 */
 	public final void dispose() 
 	{
 		blockRenderer.dispose();

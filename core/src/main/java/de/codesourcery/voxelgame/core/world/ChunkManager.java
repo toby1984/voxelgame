@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
@@ -484,17 +485,7 @@ public class ChunkManager
 
 		if ( chunkToEvict != null ) 
 		{
-			try 
-			{
-				synchronized(chunkToEvict) 
-				{
-					chunkStorage.unloadChunk( chunkToEvict );
-				}
-			} 
-			catch (IOException e) {
-				e.printStackTrace();
-				throw new RuntimeException(e);
-			}			
+			unloadChunk(chunkToEvict);
 		}
 
 		if ( existing != null ) 
@@ -502,7 +493,10 @@ public class ChunkManager
 			System.err.println("-- Disposing chunk "+newChunk+", concurrent update already created another instance");
 			try 
 			{
-				chunkStorage.unloadChunk( newChunk );
+				// save to invoke unloadChunk() directly since the new
+				// chunk created inside this method can have never been rendered yet
+				// and thus has no active VBO that needs releasing on the OpenGL rendering thread
+				chunkStorage.releaseChunk( newChunk );
 			} 
 			catch (IOException e) {
 				e.printStackTrace();
@@ -510,6 +504,44 @@ public class ChunkManager
 			return existing;
 		}
 		return newChunk;
+	}
+	
+	private void unloadChunk(final Chunk chunkToUnload) 
+	{
+		// try saving the chunk before invoking releaseChunk() 
+		// on the OpenGL rendering thread
+		// ( we don't want to write to disk while on the rendering thread)
+		synchronized(chunkToUnload) 
+		{
+			try {
+				chunkStorage.saveChunk(chunkToUnload );
+			} 
+			catch (IOException e) 
+			{
+				e.printStackTrace();
+			}
+		}
+		
+		// freeChunk() calls Chunk#dispose() which MIGHT have to
+		// release VBOs and thus requires to be executed on the
+		// OpenGL rendering thread
+		Gdx.app.postRunnable( new Runnable() {
+			
+			@Override
+			public void run() {
+				try 
+				{
+					synchronized(chunkToUnload) 
+					{
+						chunkStorage.releaseChunk( chunkToUnload );
+					}
+				} 
+				catch (IOException e) {
+					e.printStackTrace();
+					throw new RuntimeException(e);
+				}					
+			}
+		});		
 	}
 
 	private void queueAsyncChunkUpdate(Chunk chunk) {
@@ -752,7 +784,9 @@ public class ChunkManager
 				final com.badlogic.gdx.utils.IntMap.Entry<Chunk> chunk = it.next();
 				if ( chunk.value != null ) {
 					try {
-						chunkStorage.unloadChunk( chunk.value );
+						synchronized( chunk.value ) {
+							chunkStorage.saveChunk( chunk.value );
+						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
