@@ -26,6 +26,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import de.codesourcery.voxelgame.core.Block;
+import de.codesourcery.voxelgame.core.Constants;
 import de.codesourcery.voxelgame.core.Main;
 
 public class TextureAtlasUtil 
@@ -46,7 +47,7 @@ public class TextureAtlasUtil
 	
 	private static final int SELECTION_RADIUS = 10; // 5 pixels
 	
-	public static final File OUTPUT_FILE = new File( Main.ASSETS_PATH , "texture_atlas.png");
+	public static final File OUTPUT_FILE = new File( Constants.ASSETS_PATH , "texture_atlas.png");
 	private static final Color OUTLINE_COLOR = Color.PINK;
 	
 	private BufferedImage image;

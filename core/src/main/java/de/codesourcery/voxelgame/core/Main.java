@@ -34,16 +34,6 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkStorage;
 
 public class Main implements ApplicationListener {
 
-	private static final boolean RESTRICT_CAMERA_TO_AIR_BLOCKS = false;
-
-	public static final File CHUNK_STORAGE = new File("/home/tobi/tmp/chunks");
-
-	public static final File ASSETS_PATH = new File("/home/tobi/workspace/voxelgame/assets/");
-
-	// start: debugging stuff
-	public static final boolean BENCHMARK_MODE = true;
-	private static final int BENCHMARK_DURATION_SECONDS = 30;
-	
 	private long benchmarkStartTime;
 	
 	private long frameCounter=0;
@@ -91,7 +81,7 @@ public class Main implements ApplicationListener {
 	{
 		setupTextures();
 
-		final float y = Chunk.BLOCKS_Y*Chunk.BLOCK_HEIGHT+2*Chunk.BLOCK_HEIGHT;
+		final float y = (Chunk.BLOCKS_Y*Chunk.BLOCK_HEIGHT)*0.5f;
 		camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		camera.position.set(0f, y, 0.0000000001f);
 		camera.lookAt(0,y,-100);
@@ -105,7 +95,7 @@ public class Main implements ApplicationListener {
 
 		final DefaultChunkStorage chunkStorage;
 		try {
-			chunkStorage = new DefaultChunkStorage( CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) );
+			chunkStorage = new DefaultChunkStorage( Constants.CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) );
 		}
 		catch (IOException e) 
 		{
@@ -230,7 +220,7 @@ public class Main implements ApplicationListener {
 			@Override
 			public boolean canTranslateCamera(Camera cam, Vector3 posDelta) 
 			{
-				if ( ! RESTRICT_CAMERA_TO_AIR_BLOCKS ) {
+				if ( ! Constants.RESTRICT_CAMERA_TO_AIR_BLOCKS ) {
 					return true;
 				}
 
@@ -268,7 +258,7 @@ public class Main implements ApplicationListener {
 	@Override
 	public void render () 
 	{		
-		if ( BENCHMARK_MODE ) 
+		if ( Constants.BENCHMARK_MODE ) 
 		{ 
 			if ( benchmarkStartTime == 0 ) 
 			{
@@ -285,7 +275,7 @@ public class Main implements ApplicationListener {
 			{
 				long now = System.currentTimeMillis();
 				final float durationSeconds = ( now - benchmarkStartTime ) / 1000.0f;
-				if ( durationSeconds >= BENCHMARK_DURATION_SECONDS ) 
+				if ( durationSeconds >= Constants.BENCHMARK_DURATION_SECONDS ) 
 				{
 					final float avgFpsJitter = fpsJitterSum / (float) frameCounter; 
 					final float avgFps = fpsSum/(float) frameCounter;

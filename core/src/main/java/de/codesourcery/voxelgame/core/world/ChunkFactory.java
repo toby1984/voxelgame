@@ -3,33 +3,11 @@ package de.codesourcery.voxelgame.core.world;
 import com.badlogic.gdx.utils.Pool;
 
 import de.codesourcery.voxelgame.core.Block;
+import de.codesourcery.voxelgame.core.Constants;
 
 public class ChunkFactory
 {
 	private final NoiseGenerator rnd = new NoiseGenerator(Chunk.BLOCKS_X, Chunk.BLOCKS_Y,Chunk.BLOCKS_Z,0xdeadbeef );
-	
-	/*
-	 * At least on a desktop JVM (1.7.25,64-bit), chunk 
-	 * pool (while greatly reducing garbage) made the performance far WORSE (fps dropped by 10 fps)...
-	 * 
-	 * WITHOUT pooling:
-	 * 
-	 * Frame count: 1672
-	 * min FPS    : 47
-	 * avg FPS    : 55.14354 (55.720333)
-	 * max FPS    : 61
-	 * avg. FPS jitter: 0.11543062
-	 * 
-	 * WITH pooling:
-	 * 
-	 * Frame count: 1193
-     * min FPS    : 15
-     * avg FPS    : 46.870914 (39.74812)
-     * max FPS    : 60
-     * avg. FPS jitter: 0.16177703
-     * 
-     * 	 */
-	private static final boolean USE_CHUNK_POOL = true;
 	
 	private final Pool<Chunk> pool = new Pool<Chunk>(10) {
 
@@ -53,7 +31,7 @@ public class ChunkFactory
 	
 	public Chunk getChunkFromPool(int chunkX,int chunkY,int chunkZ) 
 	{
-		if ( USE_CHUNK_POOL ) {
+		if ( Constants.USE_CHUNK_POOL ) {
 			Chunk result = null;
 			synchronized(pool) {
 				result = pool.obtain();
@@ -66,7 +44,7 @@ public class ChunkFactory
 	
 	public void returnChunkToPool(Chunk chunk) 
 	{
-		if ( USE_CHUNK_POOL ) {
+		if ( Constants.USE_CHUNK_POOL ) {
 			synchronized(pool) {
 				pool.free( chunk );
 			}			

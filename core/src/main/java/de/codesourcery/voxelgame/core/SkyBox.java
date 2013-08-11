@@ -57,12 +57,12 @@ public class SkyBox implements Disposable {
 		this.shader = ChunkRenderer.loadShader( "/skybox_vertex.glsl" , "/skybox_fragment.glsl" );
 		
 		// load textures
-		front =loadTexture(Main.ASSETS_PATH,"front.png");
-		back = loadTexture(Main.ASSETS_PATH,"back.png");
-		left = loadTexture(Main.ASSETS_PATH,"left.png");
-		right = loadTexture(Main.ASSETS_PATH,"right.png");
-		top = loadTexture(Main.ASSETS_PATH,"top.png");
-		bottom = loadTexture(Main.ASSETS_PATH,"bottom.png");
+		front =loadTexture(Constants.ASSETS_PATH,"front.png");
+		back = loadTexture(Constants.ASSETS_PATH,"back.png");
+		left = loadTexture(Constants.ASSETS_PATH,"left.png");
+		right = loadTexture(Constants.ASSETS_PATH,"right.png");
+		top = loadTexture(Constants.ASSETS_PATH,"top.png");
+		bottom = loadTexture(Constants.ASSETS_PATH,"bottom.png");
 		
 		// create box
 		final Vector3 v1 = new Vector3();

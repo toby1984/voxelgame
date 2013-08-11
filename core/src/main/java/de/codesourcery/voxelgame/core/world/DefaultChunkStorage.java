@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import de.codesourcery.voxelgame.core.Block;
+import de.codesourcery.voxelgame.core.Constants;
 
 
 public class DefaultChunkStorage implements IChunkStorage
@@ -34,12 +35,12 @@ public class DefaultChunkStorage implements IChunkStorage
 		}
 
 		Chunk result = null;
-		if ( USE_PERSISTENT_STORAGE ) {
+		if ( Constants.USE_PERSISTENT_STORAGE ) {
 			result = tryLoadFromDisk(chunkX, chunkY, chunkZ);
 		}
 		if ( result == null ) {
 			result = chunkFactory.createChunk(chunkX, chunkY,chunkZ);
-			if ( USE_PERSISTENT_STORAGE ) {
+			if ( Constants.USE_PERSISTENT_STORAGE ) {
 				writeToDisk( result );
 			}
 		}
@@ -113,7 +114,7 @@ public class DefaultChunkStorage implements IChunkStorage
 	public void unloadChunk(Chunk chunk) throws IOException
 	{
 		try {
-			if ( USE_PERSISTENT_STORAGE && chunk.hasChangedSinceLoad() ) 
+			if ( Constants.USE_PERSISTENT_STORAGE && chunk.hasChangedSinceLoad() ) 
 			{
 				writeToDisk( chunk );
 				chunk.setChangedSinceLoad(false);

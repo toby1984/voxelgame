@@ -3,6 +3,7 @@ package de.codesourcery.voxelgame.java;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 
+import de.codesourcery.voxelgame.core.Constants;
 import de.codesourcery.voxelgame.core.Main;
 
 public class MainDesktop 
@@ -11,7 +12,7 @@ public class MainDesktop
 	{
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
 		config.useGL20 = true;
-		config.vSyncEnabled = ! Main.BENCHMARK_MODE; 
+		config.vSyncEnabled = ! Constants.BENCHMARK_MODE; 
 		// config.fullscreen=true;
 		config.width = 800;
 		config.height = 600;
