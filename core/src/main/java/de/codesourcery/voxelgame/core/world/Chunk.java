@@ -8,7 +8,7 @@ import com.badlogic.gdx.utils.Pool.Poolable;
 
 import de.codesourcery.voxelgame.core.Block;
 import de.codesourcery.voxelgame.core.render.BlockRenderer;
-import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
+import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
 
 /**
  * A chunk describes a cubic volume of blocks.
@@ -18,22 +18,22 @@ import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
 public final class Chunk implements Poolable
 {
 	// number of blocks along X axis	
-	public static final int BLOCKS_X = 32; 
+	public static final int BLOCKS_X = 16; 
 	
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 32; 
+	public static final int BLOCKS_Y = 128; 
 	
 	// number of blocks along Z axis
-	public static final int BLOCKS_Z = 32; 
+	public static final int BLOCKS_Z = 16; 
 	
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 16f;
+	public static final float BLOCK_WIDTH = 8f;
 	
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 16f;
+	public static final float BLOCK_HEIGHT = 8f;
 	
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 16f;	
+	public static final float BLOCK_DEPTH = 8f;	
 	
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)		
@@ -153,7 +153,7 @@ public final class Chunk implements Poolable
 	
 	public long accessCounter = 0;
 	
-	public final Block[][][] blocks;
+	public final Block[] blocks;
 	
 	public final BlockRenderer blockRenderer;
 
@@ -165,17 +165,11 @@ public final class Chunk implements Poolable
 	{
 		this.blockRenderer = new BlockRenderer();
 		
-		blocks = new Block[BLOCKS_X][][];
-		for ( int i = 0 ; i < BLOCKS_X;i++) 
+		final int arraySize = BLOCKS_X*BLOCKS_Y*BLOCKS_Z;
+		blocks = new Block[arraySize];
+		for ( int i = 0 ; i < arraySize ;i++) 
 		{
-			blocks[i] = new Block[BLOCKS_Y][];
-			for ( int j = 0 ; j < BLOCKS_Y;j++) {
-				Block[] tmp = new Block[BLOCKS_Z];
-				blocks[i][j]=tmp;
-				for ( int k = 0 ; k < BLOCKS_Z ; k++ ) {
-					tmp[k]=new Block();
-				}
-			}
+			blocks[i] = new Block();
 		}		
 		initialize(x,y,z);
 	}
@@ -199,18 +193,11 @@ public final class Chunk implements Poolable
 	public Chunk() 
 	{
 		this.blockRenderer = new BlockRenderer();
-		
-		blocks = new Block[BLOCKS_X][][];
-		for ( int i = 0 ; i < BLOCKS_X;i++) 
+		final int arraySize = BLOCKS_X*BLOCKS_Y*BLOCKS_Z;
+		blocks = new Block[arraySize];
+		for ( int i = 0 ; i < arraySize ;i++) 
 		{
-			blocks[i] = new Block[BLOCKS_Y][];
-			for ( int j = 0 ; j < BLOCKS_Y;j++) {
-				Block[] tmp = new Block[BLOCKS_Z];
-				blocks[i][j]=tmp;
-				for ( int k = 0 ; k < BLOCKS_Z ; k++ ) {
-					tmp[k]=new Block();
-				}
-			}
+			blocks[i] = new Block();
 		}
 	}
 	
@@ -243,11 +230,11 @@ public final class Chunk implements Poolable
 		return result;
 	}		
 	
-	public void setBlockType(int blockX,int blockY,int blockZ,IChunkManager chunkManager,byte blockType) 
+	public void setBlockType(int blockX,int blockY,int blockZ,ChunkManager chunkManager,byte blockType) 
 	{
 		synchronized(this) 
 		{
-			blocks[blockX][blockY][blockZ].type=blockType;
+			blocks[blockX+BLOCKS_X*blockY+(BLOCKS_X*BLOCKS_Y)*blockZ].type=blockType;
 			setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
 			setMeshRebuildRequired(true);
 			System.out.println("Changed type of block "+blockX+"/"+blockY+"/"+blockZ+" of "+this+" to new type "+blockType);
@@ -256,7 +243,7 @@ public final class Chunk implements Poolable
 		chunkManager.chunkChanged( this );		
 	}
 
-	private void invalidateAdjacentChunks(int blockX, int blockY, int blockZ,IChunkManager chunkManager)
+	private void invalidateAdjacentChunks(int blockX, int blockY, int blockZ,ChunkManager chunkManager)
 	{
 		// trigger mesh rebuild on adjacent chunks (but only if they're loaded)
 		// so that any block faces that might've been hidden and are now 
@@ -302,51 +289,51 @@ public final class Chunk implements Poolable
 		}
 	}
 	
-	public Chunk maybeGetLeftNeighbour(IChunkManager manager) {
+	public Chunk maybeGetLeftNeighbour(ChunkManager manager) {
 		return manager.maybeGetChunk( this.x - 1 , this.y , this. z );
 	}
 	
-	public Chunk maybeGetRightNeighbour(IChunkManager manager) {
+	public Chunk maybeGetRightNeighbour(ChunkManager manager) {
 		return manager.maybeGetChunk( this.x + 1 , this.y , this. z );
 	}	
 	
-	public Chunk maybeGetTopNeighbour(IChunkManager manager) {
+	public Chunk maybeGetTopNeighbour(ChunkManager manager) {
 		return manager.maybeGetChunk( this.x , this.y +1  , this. z );
 	}
 	
-	public Chunk maybeGetBottomNeighbour(IChunkManager manager) {
+	public Chunk maybeGetBottomNeighbour(ChunkManager manager) {
 		return manager.maybeGetChunk( this.x , this.y - 1  , this. z );
 	}	
 	
-	public Chunk maybeGetFrontNeighbour(IChunkManager manager) {
+	public Chunk maybeGetFrontNeighbour(ChunkManager manager) {
 		return manager.maybeGetChunk( this.x , this.y   , this. z +1 );
 	}	
 	
-	public Chunk maybeGetBackNeighbour(IChunkManager manager) {
+	public Chunk maybeGetBackNeighbour(ChunkManager manager) {
 		return manager.maybeGetChunk( this.x , this.y   , this. z -1 );
 	}	
 	
-	public Chunk getLeftNeighbour(IChunkManager manager) {
+	public Chunk getLeftNeighbour(ChunkManager manager) {
 		return manager.getChunk( this.x - 1 , this.y , this. z );
 	}
 	
-	public Chunk getRightNeighbour(IChunkManager manager) {
+	public Chunk getRightNeighbour(ChunkManager manager) {
 		return manager.getChunk( this.x + 1 , this.y , this. z );
 	}	
 	
-	public Chunk getTopNeighbour(IChunkManager manager) {
+	public Chunk getTopNeighbour(ChunkManager manager) {
 		return manager.getChunk( this.x , this.y +1  , this. z );
 	}
 	
-	public Chunk getBottomNeighbour(IChunkManager manager) {
+	public Chunk getBottomNeighbour(ChunkManager manager) {
 		return manager.getChunk( this.x , this.y - 1  , this. z );
 	}	
 	
-	public Chunk getFrontNeighbour(IChunkManager manager) {
+	public Chunk getFrontNeighbour(ChunkManager manager) {
 		return manager.getChunk( this.x , this.y   , this. z +1 );
 	}	
 	
-	public Chunk getBackNeighbour(IChunkManager manager) {
+	public Chunk getBackNeighbour(ChunkManager manager) {
 		return manager.getChunk( this.x , this.y   , this. z -1 );
 	}	
 	
@@ -383,7 +370,7 @@ public final class Chunk implements Poolable
 			{
 				for ( int z = 0 ; z < BLOCKS_Z ; z++ ) 
 				{
-					if ( blocks[x][y][z].isAirBlock() ) { // do not intersect with empty blocks
+					if ( blocks[x+BLOCKS_X*y+(BLOCKS_X*BLOCKS_Y)*z].isAirBlock() ) { // do not intersect with empty blocks
 						continue;
 					}
 					
@@ -484,7 +471,7 @@ public final class Chunk implements Poolable
 			{
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
 				{
-					if ( ! blocks[x][y][z].isAirBlock() ) 
+					if ( ! blocks[x+BLOCKS_X*y+(BLOCKS_X*BLOCKS_Y)*z].isAirBlock() ) 
 					{
 						populateBlockBoundingBox( x , y , z , TMP_BB );
 						if ( intersects(toTest, TMP_BB ) )

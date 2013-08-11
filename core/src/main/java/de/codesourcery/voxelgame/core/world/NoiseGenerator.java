@@ -2,7 +2,7 @@ package de.codesourcery.voxelgame.core.world;
 
 import de.codesourcery.voxelgame.core.util.SimplexNoise;
 
-public class DefaultNoiseGenerator 
+public class NoiseGenerator 
 {
 	public final int heightMapSizeX;
 	public final int heightMapSizeY;
@@ -11,7 +11,7 @@ public class DefaultNoiseGenerator
 	private SimplexNoise simplexNoise;
 	private long seed;
 	
-	public DefaultNoiseGenerator(int heightMapSizeX,int heightMapSizeY,int heightMapSizeZ,long seed) 
+	public NoiseGenerator(int heightMapSizeX,int heightMapSizeY,int heightMapSizeZ,long seed) 
 	{
 		this.heightMapSizeX = heightMapSizeX;
 		this.heightMapSizeY = heightMapSizeY;

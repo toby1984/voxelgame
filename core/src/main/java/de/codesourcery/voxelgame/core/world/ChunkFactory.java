@@ -6,7 +6,7 @@ import de.codesourcery.voxelgame.core.Block;
 
 public class ChunkFactory
 {
-	private final DefaultNoiseGenerator rnd = new DefaultNoiseGenerator(Chunk.BLOCKS_X, Chunk.BLOCKS_Y,Chunk.BLOCKS_Z,0xdeadbeef );
+	private final NoiseGenerator rnd = new NoiseGenerator(Chunk.BLOCKS_X, Chunk.BLOCKS_Y,Chunk.BLOCKS_Z,0xdeadbeef );
 	
 	/*
 	 * At least on a desktop JVM (1.7.25,64-bit), chunk 
@@ -91,7 +91,7 @@ public class ChunkFactory
 			{	
 				for ( int yy = 0 ; yy < Chunk.BLOCKS_Y ; yy++ ) 
 				{
-					result.blocks[xx][yy][zz].type = Block.Type.SOLID;
+					result.blocks[xx+Chunk.BLOCKS_X*yy+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*zz].type = Block.Type.SOLID;
 				}
 			}
 		}
@@ -116,7 +116,7 @@ public class ChunkFactory
 				for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ ) 
 				{
 					float currentHeight = y * scale;
-					Block block = chunk.blocks[x][y][z];
+					Block block = chunk.blocks[x+Chunk.BLOCKS_X*y+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z];
 					if ( currentHeight < height ) 
 					{
 						if ( height < 0.3f ) {
@@ -145,7 +145,7 @@ public class ChunkFactory
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 				
 				{
 					float height = heightMap[z+x*Chunk.BLOCKS_Z+y*(Chunk.BLOCKS_X*Chunk.BLOCKS_Z)]*(1.0f-y*factor);
-					Block block = chunk.blocks[x][y][z];
+					Block block = chunk.blocks[x+Chunk.BLOCKS_X*y+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z];
 					if ( y == 0 || ( height >= 0.5f && height <= 0.7f) ) 
 					{
 						block.type = Block.Type.SOLID;

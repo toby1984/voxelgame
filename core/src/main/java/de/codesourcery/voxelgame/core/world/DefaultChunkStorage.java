@@ -33,19 +33,21 @@ public class DefaultChunkStorage implements IChunkStorage
 			return chunkFactory.createEmptyChunk(chunkX, chunkY,chunkZ);
 		}
 
-		Chunk result = tryLoadFromDisk(chunkX, chunkY, chunkZ);
+		Chunk result = null;
+		if ( USE_PERSISTENT_STORAGE ) {
+			result = tryLoadFromDisk(chunkX, chunkY, chunkZ);
+		}
 		if ( result == null ) {
 			result = chunkFactory.createChunk(chunkX, chunkY,chunkZ);
-			writeToDisk( result );
+			if ( USE_PERSISTENT_STORAGE ) {
+				writeToDisk( result );
+			}
 		}
 		return result;
 	}
 
 	private Chunk tryLoadFromDisk(int chunkX, int chunkY,int chunkZ) throws IOException 
 	{
-		if ( ! USE_PERSISTENT_STORAGE ) {
-			return null;
-		}
 		final File f = createPath(chunkX,chunkY,chunkZ);
 		if ( ! f.exists() ) {
 			return null;
@@ -57,10 +59,7 @@ public class DefaultChunkStorage implements IChunkStorage
 
 	private void writeToDisk(Chunk chunk) throws IOException 
 	{
-		if ( ! USE_PERSISTENT_STORAGE ) {
-			return;
-		}
-		final Block[][][] blocks = chunk.blocks;
+		final Block[] blocks = chunk.blocks;
 		final File f = createPath(chunk.x,chunk.y,chunk.z);
 		final BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(f));
 		try {
@@ -70,7 +69,7 @@ public class DefaultChunkStorage implements IChunkStorage
 				{	
 					for ( int yy = 0 ; yy < Chunk.BLOCKS_Y ; yy++ ) 
 					{
-						out.write( blocks[xx][yy][zz].type );
+						out.write( blocks[xx+Chunk.BLOCKS_X*yy+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*zz].type );
 					}
 				}
 			}    
@@ -81,7 +80,7 @@ public class DefaultChunkStorage implements IChunkStorage
 
 	private void populateFromDisk(Chunk chunk) throws IOException 
 	{
-		final Block[][][] blocks = chunk.blocks;
+		final Block[] blocks = chunk.blocks;
 		final File f = createPath(chunk.x,chunk.y,chunk.z);
 		final BufferedInputStream out = new BufferedInputStream(new FileInputStream(f));
 		try {
@@ -95,7 +94,7 @@ public class DefaultChunkStorage implements IChunkStorage
 						if ( type == -1 ) {
 							throw new IOException("Unexpected EOF while loading chunk "+chunk);
 						}
-						blocks[xx][yy][zz].type = (byte) type;
+						blocks[xx+Chunk.BLOCKS_X*yy+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*zz].type = (byte) type;
 					}
 				}
 			}    

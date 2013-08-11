@@ -14,7 +14,7 @@ import de.codesourcery.voxelgame.core.Block;
 import de.codesourcery.voxelgame.core.FPSCameraController;
 import de.codesourcery.voxelgame.core.Main;
 import de.codesourcery.voxelgame.core.world.Chunk;
-import de.codesourcery.voxelgame.core.world.IChunkManager;
+import de.codesourcery.voxelgame.core.world.ChunkManager;
 import de.codesourcery.voxelgame.core.world.IChunkVisitor;
 
 public class ChunkRenderer implements Disposable , IChunkRenderer {
@@ -24,10 +24,10 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	private long frame = 0;
 
 	private final ShaderProgram shader;
-	private final IChunkManager chunkManager;
+	private final ChunkManager chunkManager;
 	private final FPSCameraController cameraController;
 
-	public ChunkRenderer(IChunkManager chunkManager,FPSCameraController cameraController) 
+	public ChunkRenderer(ChunkManager chunkManager,FPSCameraController cameraController) 
 	{
 		this.chunkManager = chunkManager;
 		this.cameraController = cameraController;
@@ -73,7 +73,6 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		} finally {
 			reader.close();
 		}
-		System.out.println("---- SHADER: "+name+" ----\n"+result);
 		return result.toString();
 	}		
 	
@@ -152,7 +151,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		final BlockRenderer renderer = chunk.blockRenderer;
 		renderer.begin();
 		
-		final Block[][][] blocks = chunk.blocks;
+		final Block[] blocks = chunk.blocks;
 
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) 
 		{
@@ -163,7 +162,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 				float blockCenterY = yOrig + y * Chunk.BLOCK_HEIGHT+(Chunk.BLOCK_HEIGHT*0.5f);				
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
 				{
-					final Block block = blocks[x][y][z];
+					final Block block = blocks[ (x) + Chunk.BLOCKS_X * ( y ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ) ];
 					if ( ! block.isAirBlock() ) 
 					{
 						int sidesMask;
@@ -174,7 +173,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 						// back-to-front with depth buffer disabled
 						if ( x != 0 && block.type == Block.Type.WATER ) 
 						{
-							if ( y == Chunk.BLOCKS_Y-1 || blocks[x][y+1][z].isAirBlock() ) {
+							if ( y == Chunk.BLOCKS_Y-1 || blocks[ (x) + Chunk.BLOCKS_X * ( y+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ) ].isAirBlock() ) {
 								sidesMask = BlockRenderer.SIDE_TOP;
 							} else {
 								sidesMask = 0;
@@ -213,7 +212,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 	private int determineSidesToRender(Chunk chunk,int blockX,int blockY,int blockZ) 
 	{
-		final Block[][][] blocks = chunk.blocks;
+		final Block[] blocks = chunk.blocks;
 
 		int sideMask = 0;
 
@@ -222,24 +221,24 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		{ 
 			// check adjacent chunk left of this one
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x-1 ,  chunk.y ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[Chunk.BLOCKS_X-1][blockY][blockZ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || adj.blocks[ (Chunk.BLOCKS_X-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 			{
 				sideMask = BlockRenderer.SIDE_LEFT;
 			}
 		} 
-		else if ( blocks[blockX-1][blockY][blockZ].isTranslucentBlock() ) 
+		else if ( blocks[ (blockX-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 		{
 			sideMask = BlockRenderer.SIDE_LEFT;			
 		}
 
 		if ( blockX == Chunk.BLOCKS_X-1 ) { // check adjacent chunk right of this one
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x+1 ,  chunk.y ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[0][blockY][blockZ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || adj.blocks[ (0) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_RIGHT;
 			}
 		} 
-		else if ( blocks[blockX+1][blockY][blockZ].isTranslucentBlock() ) 
+		else if ( blocks[ (blockX+1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 		{
 			sideMask |= BlockRenderer.SIDE_RIGHT;
 		}		
@@ -247,12 +246,12 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		// check along Y axis
 		if ( blockY == 0 ) { 
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y+1 ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][0][blockZ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( 0 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_BOTTOM;
 			}			
 		} 
-		else if ( blocks[blockX][blockY-1][blockZ].isTranslucentBlock() ) 
+		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 		{
 			sideMask |= BlockRenderer.SIDE_BOTTOM;
 		}	
@@ -261,12 +260,12 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		{
 			// check adjacent chunk
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y-1 ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][Chunk.BLOCKS_Y-1][blockZ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( Chunk.BLOCKS_Y-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_TOP;
 			}				
 		} 
-		else if ( blocks[blockX][blockY+1][blockZ].isTranslucentBlock() ) 
+		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
 		{
 			sideMask |= BlockRenderer.SIDE_TOP;
 		}		
@@ -274,24 +273,24 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		// check along Z axis
 		if ( blockZ == 0 ) { // check adjacent chunk
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z-1 );	
-			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][blockY][Chunk.BLOCKS_Z-1].isTranslucentBlock() )  
+			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( Chunk.BLOCKS_Z-1 ) ].isTranslucentBlock() )  
 			{
 				sideMask |= BlockRenderer.SIDE_BACK;
 			}
 		} 
-		else if ( blocks[blockX][blockY][blockZ-1].isTranslucentBlock() ) 
+		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ-1 ) ].isTranslucentBlock() ) 
 		{
 			sideMask |= BlockRenderer.SIDE_BACK;
 		}	
 
 		if ( blockZ == Chunk.BLOCKS_Z-1 ) { // check adjacent chunk
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z+1 );	
-			if ( adj == null || adj.isEmpty() || adj.blocks[blockX][blockY][0].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( 0 ) ].isTranslucentBlock() ) 
 			{
 				sideMask |= BlockRenderer.SIDE_FRONT;
 			}
 		} 
-		else if ( blocks[blockX][blockY][blockZ+1].isTranslucentBlock() ) 
+		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ+1 ) ].isTranslucentBlock() ) 
 		{
 			sideMask |= BlockRenderer.SIDE_FRONT;
 		}		

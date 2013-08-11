@@ -28,8 +28,8 @@ import de.codesourcery.voxelgame.core.render.IChunkRenderer;
 import de.codesourcery.voxelgame.core.util.TextureAtlasUtil;
 import de.codesourcery.voxelgame.core.world.Chunk;
 import de.codesourcery.voxelgame.core.world.ChunkFactory;
-import de.codesourcery.voxelgame.core.world.DefaultChunkManager;
-import de.codesourcery.voxelgame.core.world.DefaultChunkManager.Hit;
+import de.codesourcery.voxelgame.core.world.ChunkManager;
+import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
 import de.codesourcery.voxelgame.core.world.DefaultChunkStorage;
 
 public class Main implements ApplicationListener {
@@ -59,7 +59,7 @@ public class Main implements ApplicationListener {
 	private PerspectiveCamera camera;
 	private SpriteBatch spriteBatch;
 	private FPSCameraController camController;
-	private DefaultChunkManager chunkManager;
+	private ChunkManager chunkManager;
 	private IChunkRenderer chunkRenderer;
 	private Texture crosshair;
 	private BitmapFont font;
@@ -113,7 +113,7 @@ public class Main implements ApplicationListener {
 			throw new RuntimeException(e);
 		}
 		
-		chunkManager = new DefaultChunkManager(camera,chunkStorage);
+		chunkManager = new ChunkManager(camera,chunkStorage);
 
 		shapeRenderer = new ShapeRenderer();
 

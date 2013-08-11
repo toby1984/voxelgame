@@ -31,7 +31,7 @@ import de.codesourcery.voxelgame.core.util.BoundedUniqueLIFOQueue.ShutdownExcept
 import de.codesourcery.voxelgame.core.world.Chunk.ChunkKey;
 
 
-public class DefaultChunkManager implements IChunkManager 
+public class ChunkManager 
 {
 	// the current chunk (3x3 chunks)
 	public static final int MAX_CACHED_CHUNKS = 100;
@@ -249,7 +249,7 @@ public class DefaultChunkManager implements IChunkManager
 		}
 	}
 
-	public DefaultChunkManager(Camera camera,IChunkStorage chunkStorage) 
+	public ChunkManager(Camera camera,IChunkStorage chunkStorage) 
 	{
 		this.camera = camera;
 		this.chunkStorage = chunkStorage;
@@ -279,7 +279,6 @@ public class DefaultChunkManager implements IChunkManager
 	/* (non-Javadoc)
 	 * @see de.codesourcery.voxelgame.core.world.IChunkManager#getCurrentChunk()
 	 */
-	@Override
 	public void visitVisibleChunks(IChunkVisitor visitor) 
 	{
 		for ( Chunk chunk : internalGetVisibleChunks() ) 
@@ -364,7 +363,6 @@ public class DefaultChunkManager implements IChunkManager
 		}
 	}
 
-	@Override
 	public Chunk maybeGetChunk(int chunkX, int chunkY, int chunkZ) 
 	{
 		final int key = Chunk.calcChunkKey(chunkX,chunkY,chunkZ);
@@ -379,7 +377,6 @@ public class DefaultChunkManager implements IChunkManager
 		return null;
 	}
 
-	@Override
 	public Chunk getChunk(int chunkX, int chunkY, int chunkZ) 
 	{		
 		final int key = Chunk.calcChunkKey(chunkX, chunkY, chunkZ);
@@ -567,7 +564,6 @@ public class DefaultChunkManager implements IChunkManager
 			return new ThreadPoolExecutor( threadCount, threadCount, 60, TimeUnit.SECONDS , queue , threadFactory , new CallerRunsPolicy() );
 	}
 
-	@Override
 	public void chunkChanged(Chunk chunk) 
 	{
 		queueAsyncChunkUpdate( chunk );
@@ -584,7 +580,7 @@ public class DefaultChunkManager implements IChunkManager
 
 	private void recalculateLighting(Chunk chunk) 
 	{
-		final Block[][][] blocks = chunk.blocks;
+		final Block[] blocks = chunk.blocks;
 		// set light level of blocks that are directly hit by sunlight (no opaque block above them)
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) {
 			for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
@@ -594,7 +590,7 @@ public class DefaultChunkManager implements IChunkManager
 				byte currentLightLevel = Block.MAX_LIGHT_LEVEL;
 				for ( int y1 = Chunk.BLOCKS_Y-1 ; y1 >= 0; y1-- ) 
 				{
-					final Block block = blocks[x][y1][z];
+					final Block block = blocks[x+Chunk.BLOCKS_X*y1+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z];
 					block.lightLevel = currentLightLevel;
 					if ( ! block.isTranslucentBlock() ) { // blocks below it will only receive min light level
 						currentLightLevel = Block.MIN_LIGHT_LEVEL; 
@@ -625,7 +621,6 @@ public class DefaultChunkManager implements IChunkManager
 	/* (non-Javadoc)
 	 * @see de.codesourcery.voxelgame.core.world.IChunkManager#moveCameraRelative(float, float)
 	 */
-	@Override
 	public void cameraMoved()
 	{
 		// world (0,0) is at center of chunk at (0,0), adjust coordinates by half chunk size
@@ -662,7 +657,7 @@ public class DefaultChunkManager implements IChunkManager
 		public final Vector3 hitPointOnBlock=new Vector3();
 
 		public Block getBlock() {
-			return chunk.blocks[blockX][blockY][blockZ];
+			return chunk.blocks[blockX+Chunk.BLOCKS_X*blockY+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*blockZ];
 		}
 
 		@Override
@@ -674,7 +669,6 @@ public class DefaultChunkManager implements IChunkManager
 	/* (non-Javadoc)
 	 * @see de.codesourcery.voxelgame.core.world.IChunkManager#getClosestIntersection(com.badlogic.gdx.math.collision.Ray, de.codesourcery.voxelgame.core.world.ChunkManager.Hit)
 	 */
-	@Override
 	public boolean getClosestIntersection(Ray ray,Hit hit) {
 
 		boolean gotHit = false;
@@ -707,7 +701,6 @@ public class DefaultChunkManager implements IChunkManager
 	/* (non-Javadoc)
 	 * @see de.codesourcery.voxelgame.core.world.IChunkManager#getContainingBlock(com.badlogic.gdx.math.Vector3, de.codesourcery.voxelgame.core.world.ChunkManager.Hit)
 	 */
-	@Override
 	public boolean getContainingBlock(Vector3 worldCoords,Hit hit) 
 	{
 		for ( Chunk chunk : internalGetVisibleChunks() ) 
@@ -727,7 +720,6 @@ public class DefaultChunkManager implements IChunkManager
 	/* (non-Javadoc)
 	 * @see de.codesourcery.voxelgame.core.world.IChunkManager#intersectsNonEmptyBlock(com.badlogic.gdx.math.collision.BoundingBox)
 	 */
-	@Override
 	public boolean intersectsNonEmptyBlock(BoundingBox bb)
 	{
 		for ( Chunk chunk : internalGetVisibleChunks() ) 
@@ -740,7 +732,6 @@ public class DefaultChunkManager implements IChunkManager
 		return false;
 	}
 
-	@Override
 	public void dispose() 
 	{
 		chunkLoader.terminate();
