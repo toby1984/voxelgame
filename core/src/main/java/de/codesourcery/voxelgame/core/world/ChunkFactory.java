@@ -69,7 +69,7 @@ public class ChunkFactory
 			{	
 				for ( int yy = 0 ; yy < Chunk.BLOCKS_Y ; yy++ ) 
 				{
-					result.blocks[xx+Chunk.BLOCKS_X*yy+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*zz].type = Block.Type.SOLID;
+					result.blockType[xx+Chunk.BLOCKS_X*yy+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*zz] = Block.Type.SOLID;
 				}
 			}
 		}
@@ -81,6 +81,7 @@ public class ChunkFactory
 		final float chunkSize = 0.3f;
 		final float[] heightMap = rnd.createNoise2D( chunk.x*chunkSize , chunk.z*chunkSize , chunkSize  , 7 , 4f );
 		
+		final byte[] blockTypes = chunk.blockType;
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) 
 		{
 			for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
@@ -94,16 +95,16 @@ public class ChunkFactory
 				for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ ) 
 				{
 					float currentHeight = y * scale;
-					Block block = chunk.blocks[x+Chunk.BLOCKS_X*y+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z];
+					final int currentIndex = x+Chunk.BLOCKS_X*y+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z;
 					if ( currentHeight < height ) 
 					{
 						if ( height < 0.3f ) {
-							block.type = Block.Type.WATER;
+							blockTypes[currentIndex] = Block.Type.WATER;
 						} else {
-							block.type = Block.Type.SOLID;
+							blockTypes[currentIndex] = Block.Type.SOLID;
 						}
 					} else {
-						block.type = Block.Type.AIR;
+						blockTypes[currentIndex]  = Block.Type.AIR;
 					}
 				}
 			}
@@ -116,6 +117,8 @@ public class ChunkFactory
 		final float[] heightMap = rnd.createNoise3D( chunk.x*chunkSize , chunk.y*chunkSize, chunk.z*chunkSize  , chunkSize  , 5 , 4f );
 		
 		final float factor = 1.0f / (float) (Chunk.BLOCKS_Y*3f);
+		final byte[] blockTypes = chunk.blockType;
+		
 		for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ ) 		
 		{
 			for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) 			
@@ -123,12 +126,12 @@ public class ChunkFactory
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 				
 				{
 					float height = heightMap[z+x*Chunk.BLOCKS_Z+y*(Chunk.BLOCKS_X*Chunk.BLOCKS_Z)]*(1.0f-y*factor);
-					Block block = chunk.blocks[x+Chunk.BLOCKS_X*y+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z];
+					final int currentIndex = x+Chunk.BLOCKS_X*y+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z;
 					if ( y == 0 || ( height >= 0.5f && height <= 0.7f) ) 
 					{
-						block.type = Block.Type.SOLID;
+						blockTypes[currentIndex ] = Block.Type.SOLID;
 					} else {
-						block.type = Block.Type.AIR;
+						blockTypes[currentIndex ] = Block.Type.AIR;
 					}
 				}
 			}

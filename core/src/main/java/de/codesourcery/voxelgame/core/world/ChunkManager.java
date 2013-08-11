@@ -580,7 +580,9 @@ public class ChunkManager
 
 	private void recalculateLighting(Chunk chunk) 
 	{
-		final Block[] blocks = chunk.blocks;
+		final byte[] blockTypes = chunk.blockType;
+		final byte[] lightLevels = chunk.lightLevel;
+		
 		// set light level of blocks that are directly hit by sunlight (no opaque block above them)
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) {
 			for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
@@ -590,9 +592,9 @@ public class ChunkManager
 				byte currentLightLevel = Block.MAX_LIGHT_LEVEL;
 				for ( int y1 = Chunk.BLOCKS_Y-1 ; y1 >= 0; y1-- ) 
 				{
-					final Block block = blocks[x+Chunk.BLOCKS_X*y1+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z];
-					block.lightLevel = currentLightLevel;
-					if ( ! block.isTranslucentBlock() ) { // blocks below it will only receive min light level
+					final int currentIndex = x+Chunk.BLOCKS_X*y1+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z;
+					lightLevels[ currentIndex ] = currentLightLevel;
+					if ( Block.isNoTranslucentBlock( blockTypes[currentIndex ] ) ) { // blocks below it will only receive min light level
 						currentLightLevel = Block.MIN_LIGHT_LEVEL; 
 					} 
 				}				
@@ -655,10 +657,6 @@ public class ChunkManager
 		public int blockY;
 		public int blockZ;
 		public final Vector3 hitPointOnBlock=new Vector3();
-
-		public Block getBlock() {
-			return chunk.blocks[blockX+Chunk.BLOCKS_X*blockY+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*blockZ];
-		}
 
 		@Override
 		public String toString() {

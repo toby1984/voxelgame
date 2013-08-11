@@ -1,6 +1,5 @@
 package de.codesourcery.voxelgame.core;
 
-import java.io.File;
 import java.io.IOException;
 
 import com.badlogic.gdx.ApplicationListener;

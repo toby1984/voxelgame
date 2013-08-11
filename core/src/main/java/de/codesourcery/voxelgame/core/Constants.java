@@ -37,5 +37,5 @@ public class Constants
      * avg. FPS jitter: 0.16177703
      * 
      * 	 */
-	public static final boolean USE_CHUNK_POOL = true;
+	public static final boolean USE_CHUNK_POOL = false;
 }

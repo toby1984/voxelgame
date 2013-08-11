@@ -21,19 +21,19 @@ public final class Chunk implements Poolable
 	public static final int BLOCKS_X = 32; 
 	
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 128; 
+	public static final int BLOCKS_Y = 64; 
 	
 	// number of blocks along Z axis
 	public static final int BLOCKS_Z = 32; 
 	
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 8f;
+	public static final float BLOCK_WIDTH = 16f;
 	
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 8f;
+	public static final float BLOCK_HEIGHT = 16f;
 	
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 8f;	
+	public static final float BLOCK_DEPTH = 16f;	
 	
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)		
@@ -153,7 +153,8 @@ public final class Chunk implements Poolable
 	
 	public long accessCounter = 0;
 	
-	public final Block[] blocks;
+	public final byte[] blockType;
+	public final byte[] lightLevel;
 	
 	public final BlockRenderer blockRenderer;
 
@@ -166,11 +167,8 @@ public final class Chunk implements Poolable
 		this.blockRenderer = new BlockRenderer();
 		
 		final int arraySize = BLOCKS_X*BLOCKS_Y*BLOCKS_Z;
-		blocks = new Block[arraySize];
-		for ( int i = 0 ; i < arraySize ;i++) 
-		{
-			blocks[i] = new Block();
-		}		
+		lightLevel = new byte[ arraySize ];
+		blockType = new byte[arraySize];
 		initialize(x,y,z);
 	}
 	
@@ -194,11 +192,8 @@ public final class Chunk implements Poolable
 	{
 		this.blockRenderer = new BlockRenderer();
 		final int arraySize = BLOCKS_X*BLOCKS_Y*BLOCKS_Z;
-		blocks = new Block[arraySize];
-		for ( int i = 0 ; i < arraySize ;i++) 
-		{
-			blocks[i] = new Block();
-		}
+		lightLevel = new byte[ arraySize ];
+		blockType = new byte[arraySize];
 	}
 	
 	public void initialize(int x, int y,int z) 
@@ -230,14 +225,14 @@ public final class Chunk implements Poolable
 		return result;
 	}		
 	
-	public void setBlockType(int blockX,int blockY,int blockZ,ChunkManager chunkManager,byte blockType) 
+	public void setBlockType(int blockX,int blockY,int blockZ,ChunkManager chunkManager,byte newType) 
 	{
 		synchronized(this) 
 		{
-			blocks[blockX+BLOCKS_X*blockY+(BLOCKS_X*BLOCKS_Y)*blockZ].type=blockType;
+			blockType[blockX+BLOCKS_X*blockY+(BLOCKS_X*BLOCKS_Y)*blockZ]=newType;
 			setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
 			setMeshRebuildRequired(true);
-			System.out.println("Changed type of block "+blockX+"/"+blockY+"/"+blockZ+" of "+this+" to new type "+blockType);
+			System.out.println("Changed type of block "+blockX+"/"+blockY+"/"+blockZ+" of "+this+" to new type "+newType);
 		}
 		invalidateAdjacentChunks(blockX, blockY, blockZ, chunkManager);
 		chunkManager.chunkChanged( this );		
@@ -370,7 +365,7 @@ public final class Chunk implements Poolable
 			{
 				for ( int z = 0 ; z < BLOCKS_Z ; z++ ) 
 				{
-					if ( blocks[x+BLOCKS_X*y+(BLOCKS_X*BLOCKS_Y)*z].isAirBlock() ) { // do not intersect with empty blocks
+					if ( Block.isAirBlock( blockType[x+BLOCKS_X*y+(BLOCKS_X*BLOCKS_Y)*z] ) ) { // do not intersect with empty blocks
 						continue;
 					}
 					
@@ -471,7 +466,7 @@ public final class Chunk implements Poolable
 			{
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
 				{
-					if ( ! blocks[x+BLOCKS_X*y+(BLOCKS_X*BLOCKS_Y)*z].isAirBlock() ) 
+					if ( Block.isNoAirBlock( blockType[x+BLOCKS_X*y+(BLOCKS_X*BLOCKS_Y)*z] ) ) 
 					{
 						populateBlockBoundingBox( x , y , z , TMP_BB );
 						if ( intersects(toTest, TMP_BB ) )

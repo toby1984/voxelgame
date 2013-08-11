@@ -25,7 +25,7 @@ void main()
    fogFactor = clamp(fogFactor, 0.0, 1.0);
 
    gl_FragColor.rgb=shadedColor;
-   gl_FragColor.a = v_color.a*fogFactor;
+   gl_FragColor.a = v_color.a*fogFactor;   
    
    // gl_FragColor.rgb=shadedColor*fogFactor+(vec3(0.7,0.7,0.7)*(1-fogFactor));
    // gl_FragColor.a = v_color.a;   

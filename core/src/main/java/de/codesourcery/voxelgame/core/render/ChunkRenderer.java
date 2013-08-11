@@ -151,7 +151,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		final BlockRenderer renderer = chunk.blockRenderer;
 		renderer.begin();
 		
-		final Block[] blocks = chunk.blocks;
+		final byte[] blocks = chunk.blockType;
 
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) 
 		{
@@ -162,8 +162,9 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 				float blockCenterY = yOrig + y * Chunk.BLOCK_HEIGHT+(Chunk.BLOCK_HEIGHT*0.5f);				
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
 				{
-					final Block block = blocks[ (x) + Chunk.BLOCKS_X * ( y ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ) ];
-					if ( ! block.isAirBlock() ) 
+					final int currentIndex = (x) + Chunk.BLOCKS_X * ( y ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ); 
+					final byte blockType = blocks[ currentIndex ];
+					if ( Block.isNoAirBlock( blockType ) ) 
 					{
 						int sidesMask;
 						// TODO: Rendering translucent blocks needs fixing
@@ -171,9 +172,9 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 						// and http://www.opengl.org/wiki/Transparency_Sorting
 						// need to use separate VBOs for translucent blocks and render them
 						// back-to-front with depth buffer disabled
-						if ( x != 0 && block.type == Block.Type.WATER ) 
+						if ( x != 0 && blockType == Block.Type.WATER ) 
 						{
-							if ( y == Chunk.BLOCKS_Y-1 || blocks[ (x) + Chunk.BLOCKS_X * ( y+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ) ].isAirBlock() ) {
+							if ( y == Chunk.BLOCKS_Y-1 || Block.isAirBlock( blocks[ (x) + Chunk.BLOCKS_X * ( y+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ) ] ) ) {
 								sidesMask = BlockRenderer.SIDE_TOP;
 							} else {
 								sidesMask = 0;
@@ -188,8 +189,10 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 							if ( DEBUG_PERFORMANCE ) {
 								sideCount += Integer.bitCount( sidesMask );
 							} 
-							final float lightFactor = 0.3f + block.lightLevel*(0.7f/(float)(Block.MAX_LIGHT_LEVEL+1));
-							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f ,lightFactor, block , sidesMask );
+							final float lightLevel = chunk.lightLevel[ currentIndex ];
+							final float lightFactor = 0.3f + lightLevel*(0.7f/(float)(Block.MAX_LIGHT_LEVEL+1));
+							// final float lightFactor = 0.7f;
+							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f ,lightFactor, blockType , sidesMask );
 							if ( DEBUG_PERFORMANCE ) {
 								notCulled++;
 							}
@@ -212,7 +215,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 	private int determineSidesToRender(Chunk chunk,int blockX,int blockY,int blockZ) 
 	{
-		final Block[] blocks = chunk.blocks;
+		final byte[] blocks = chunk.blockType;
 
 		int sideMask = 0;
 
@@ -221,24 +224,24 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		{ 
 			// check adjacent chunk left of this one
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x-1 ,  chunk.y ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[ (Chunk.BLOCKS_X-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (Chunk.BLOCKS_X-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 			{
 				sideMask = BlockRenderer.SIDE_LEFT;
 			}
 		} 
-		else if ( blocks[ (blockX-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+		else if ( Block.isTranslucentBlock( blocks[ (blockX-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 		{
 			sideMask = BlockRenderer.SIDE_LEFT;			
 		}
 
 		if ( blockX == Chunk.BLOCKS_X-1 ) { // check adjacent chunk right of this one
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x+1 ,  chunk.y ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[ (0) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (0) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 			{
 				sideMask |= BlockRenderer.SIDE_RIGHT;
 			}
 		} 
-		else if ( blocks[ (blockX+1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+		else if ( Block.isTranslucentBlock( blocks[ (blockX+1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 		{
 			sideMask |= BlockRenderer.SIDE_RIGHT;
 		}		
@@ -246,12 +249,12 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		// check along Y axis
 		if ( blockY == 0 ) { 
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y+1 ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( 0 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( 0 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 			{
 				sideMask |= BlockRenderer.SIDE_BOTTOM;
 			}			
 		} 
-		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 		{
 			sideMask |= BlockRenderer.SIDE_BOTTOM;
 		}	
@@ -260,12 +263,12 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		{
 			// check adjacent chunk
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y-1 ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( Chunk.BLOCKS_Y-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( Chunk.BLOCKS_Y-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 			{
 				sideMask |= BlockRenderer.SIDE_TOP;
 			}				
 		} 
-		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ].isTranslucentBlock() ) 
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
 		{
 			sideMask |= BlockRenderer.SIDE_TOP;
 		}		
@@ -273,24 +276,24 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		// check along Z axis
 		if ( blockZ == 0 ) { // check adjacent chunk
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z-1 );	
-			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( Chunk.BLOCKS_Z-1 ) ].isTranslucentBlock() )  
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( Chunk.BLOCKS_Z-1 ) ] ) )  
 			{
 				sideMask |= BlockRenderer.SIDE_BACK;
 			}
 		} 
-		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ-1 ) ].isTranslucentBlock() ) 
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ-1 ) ] ) ) 
 		{
 			sideMask |= BlockRenderer.SIDE_BACK;
 		}	
 
 		if ( blockZ == Chunk.BLOCKS_Z-1 ) { // check adjacent chunk
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z+1 );	
-			if ( adj == null || adj.isEmpty() || adj.blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( 0 ) ].isTranslucentBlock() ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( 0 ) ] ) ) 
 			{
 				sideMask |= BlockRenderer.SIDE_FRONT;
 			}
 		} 
-		else if ( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ+1 ) ].isTranslucentBlock() ) 
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ+1 ) ] ) ) 
 		{
 			sideMask |= BlockRenderer.SIDE_FRONT;
 		}		

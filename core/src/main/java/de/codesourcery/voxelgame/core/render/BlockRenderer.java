@@ -203,9 +203,9 @@ public final class BlockRenderer implements Disposable {
 		return result;
 	}	
 
-	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, float lightFactor,Block block ,int sideMask ) 
+	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, float lightFactor,byte blockType ,int sideMask ) 
 	{
-		final float[] textureUV = blockTextureCoords[ block.type ];
+		final float[] textureUV = blockTextureCoords[ blockType ];
 		
 		int p0,p1,p2,p3;
 		if ( (sideMask & SIDE_FRONT ) != 0 ) {

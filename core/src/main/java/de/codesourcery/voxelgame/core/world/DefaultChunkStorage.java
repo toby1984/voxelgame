@@ -60,20 +60,12 @@ public class DefaultChunkStorage implements IChunkStorage
 
 	private void writeToDisk(Chunk chunk) throws IOException 
 	{
-		final Block[] blocks = chunk.blocks;
+		final byte[] blockTypes = chunk.blockType;
 		final File f = createPath(chunk.x,chunk.y,chunk.z);
 		final BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(f));
+		
 		try {
-			for ( int xx = 0 ; xx < Chunk.BLOCKS_X ; xx++ ) 
-			{
-				for ( int zz = 0 ; zz < Chunk.BLOCKS_Z ; zz++ ) 
-				{	
-					for ( int yy = 0 ; yy < Chunk.BLOCKS_Y ; yy++ ) 
-					{
-						out.write( blocks[xx+Chunk.BLOCKS_X*yy+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*zz].type );
-					}
-				}
-			}    
+			out.write( chunk.blockType , 0 , chunk.blockType.length );
 		} finally {
 			out.close();
 		}
@@ -81,24 +73,14 @@ public class DefaultChunkStorage implements IChunkStorage
 
 	private void populateFromDisk(Chunk chunk) throws IOException 
 	{
-		final Block[] blocks = chunk.blocks;
 		final File f = createPath(chunk.x,chunk.y,chunk.z);
 		final BufferedInputStream out = new BufferedInputStream(new FileInputStream(f));
-		try {
-			for ( int xx = 0 ; xx < Chunk.BLOCKS_X ; xx++ ) 
-			{
-				for ( int zz = 0 ; zz < Chunk.BLOCKS_Z ; zz++ ) 
-				{	
-					for ( int yy = 0 ; yy < Chunk.BLOCKS_Y ; yy++ ) 
-					{
-						int type = out.read();
-						if ( type == -1 ) {
-							throw new IOException("Unexpected EOF while loading chunk "+chunk);
-						}
-						blocks[xx+Chunk.BLOCKS_X*yy+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*zz].type = (byte) type;
-					}
-				}
-			}    
+		try 
+		{
+			int read = out.read( chunk.blockType , 0 , chunk.blockType.length );
+			if ( read != chunk.blockType.length ) {
+				throw new IOException("Premature end of input, tried to read "+chunk.blockType.length+" bytes but got only "+read);
+			}
 		} finally {
 			out.close();
 		}

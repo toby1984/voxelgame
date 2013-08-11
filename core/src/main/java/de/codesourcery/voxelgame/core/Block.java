@@ -24,18 +24,27 @@ public final class Block
 		public static final byte MAX = WATER;
 	}
 	
-	public byte type=Block.Type.AIR;
 	public byte lightLevel=MIN_LIGHT_LEVEL;
 	
-	public boolean isAirBlock() 
+	public static boolean isAirBlock(byte type) 
 	{
 		return type == Block.Type.AIR;
 	}
 	
-	public boolean isTranslucentBlock() 
+	public static boolean isNoAirBlock(byte type) 
+	{
+		return type != Block.Type.AIR;
+	}	
+	
+	public static boolean isTranslucentBlock(byte type) 
 	{
 		return type == Block.Type.AIR || type == Block.Type.WATER;
-	}	
+	}
+	
+	public static boolean isNoTranslucentBlock(byte type) 
+	{
+		return type != Block.Type.AIR && type != Block.Type.WATER;
+	}		
 	
 	public static void populateBoundingBox(Chunk chunk,int blockX,int blockY,int blockZ,BoundingBox bb) 	{
 		
