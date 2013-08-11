@@ -13,6 +13,9 @@ public class MainDesktop
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
 		config.useGL20 = true;
 		config.vSyncEnabled = ! Constants.BENCHMARK_MODE; 
+		if ( Constants.BENCHMARK_MODE ) {
+			config.foregroundFPS=0;
+		}
 		config.fullscreen=Constants.BENCHMARK_MODE;
 		config.width = 800;
 		config.height = 600;

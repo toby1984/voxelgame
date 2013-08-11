@@ -89,7 +89,6 @@ public class DefaultChunkStorage implements IChunkStorage
 	private File createPath(int chunkX, int chunkY,int chunkZ) 
 	{
 		return new File( chunkDirectory+"/chunk_"+chunkX+"_"+chunkY+"_"+chunkZ+".chunk" );
-
 	}
 
 	@Override

@@ -253,9 +253,9 @@ public class Main implements ApplicationListener {
 		chunkManager.cameraMoved();
 		Gdx.input.setInputProcessor(camController);	
 	}
-
+	
 	@Override
-	public void render () 
+	public void render() 
 	{		
 		if ( Constants.BENCHMARK_MODE ) 
 		{ 

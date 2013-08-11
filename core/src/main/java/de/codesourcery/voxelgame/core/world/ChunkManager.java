@@ -55,7 +55,7 @@ public class ChunkManager
 	 * +--+--+--+--+--+
 	 */
 	public static final int LOAD_SURROUNDING_CHUNKS = 5;
-	
+
 	private final Vector3 TMP = new Vector3();
 
 	// @GuardedBy( chunkMap )
@@ -92,9 +92,9 @@ public class ChunkManager
 	private final ChunkUpdaterThread chunkUpdater;
 	private final ChunkLoaderThread chunkLoader;
 	private final VisibleListUpdaterThread visibleListUpdater;
-	
+
 	protected final class VisibleListUpdaterThread extends Thread {
-		
+
 		private final AtomicBoolean updateListRequired = new AtomicBoolean(false);
 		private volatile boolean terminate;
 		public VisibleListUpdaterThread() 
@@ -102,7 +102,7 @@ public class ChunkManager
 			setDaemon(true);
 			setName("visibility-list-updater");
 		}		
-		
+
 		@Override
 		public void run() 
 		{
@@ -117,12 +117,12 @@ public class ChunkManager
 				}
 			}
 		}
-		
+
 		public void queueUpdate() 
 		{
 			updateListRequired.set(true);
 		}
-		
+
 		public void terminate() {
 			this.terminate = true;
 			this.interrupt();
@@ -156,7 +156,7 @@ public class ChunkManager
 				catch(ShutdownException e) {
 					break;
 				}
-				catch (InterruptedException e) {
+				catch (Exception e) {
 					e.printStackTrace();
 					continue;
 				}
@@ -171,13 +171,17 @@ public class ChunkManager
 				@Override
 				public void run() 
 				{
-					synchronized( chunk ) 
-					{
-						if ( chunk.isMeshRebuildRequired() && ! chunk.isDisposed() ) 
-						{				
-							syncUpdateChunk(chunk);
-							visibleListUpdater.queueUpdate();
+					try {
+						synchronized( chunk ) 
+						{
+							if ( chunk.isMeshRebuildRequired() && ! chunk.isDisposed() ) 
+							{				
+								syncUpdateChunk(chunk);
+								visibleListUpdater.queueUpdate();
+							}
 						}
+					} catch(Exception e) {
+						e.printStackTrace();
 					}
 				}} );
 		}		
@@ -230,16 +234,20 @@ public class ChunkManager
 				@Override
 				public void run() 
 				{
-					final int chunkKey = Chunk.calcChunkKey(chunkX, chunkY, chunkZ);
-					Chunk existing;
-					synchronized( chunkMap ) 
-					{
-						existing = chunkMap.get( chunkKey );
-					}
-					if ( existing == null )
-					{
-						existing = syncLoadChunk(chunkX, chunkY, chunkZ, chunkKey);
-					}
+					try {
+						final int chunkKey = Chunk.calcChunkKey(chunkX, chunkY, chunkZ);
+						Chunk existing;
+						synchronized( chunkMap ) 
+						{
+							existing = chunkMap.get( chunkKey );
+						}
+						if ( existing == null )
+						{
+							existing = syncLoadChunk(chunkX, chunkY, chunkZ, chunkKey);
+						}
+					} catch(Exception e) {
+						e.printStackTrace();
+					}					
 				}} );
 		}		
 
@@ -255,9 +263,9 @@ public class ChunkManager
 		this.chunkStorage = chunkStorage;
 
 		final int cpuCount = Runtime.getRuntime().availableProcessors();
-		
+
 		final int threadCount = 1+(cpuCount/3);
-		
+
 		final int chunkLoadToUpdateRatio=3; // 3:1
 
 		this.loaderThreadsPool = createWorkerPool( "chunk-loader-thread",threadCount*chunkLoadToUpdateRatio , true );
@@ -266,7 +274,7 @@ public class ChunkManager
 		chunkLoader = new ChunkLoaderThread();
 		visibleListUpdater = new VisibleListUpdaterThread();
 		chunkUpdater = new ChunkUpdaterThread();
-		
+
 		chunkUpdater.start();
 		visibleListUpdater.start();		
 		chunkLoader.start();		
@@ -325,23 +333,24 @@ public class ChunkManager
 		if ( ! toLoad.isEmpty() ) 
 		{ 
 			// schedule chunk loading by proximity to point along view direction
-			final Vector3 pointInCameraDirection = new Vector3(camera.direction).scl( 1000 );
-			pointInCameraDirection.add( camera.position );
-
 			Collections.sort( toLoad , new Comparator<ChunkKey>()  
 					{
+
+				final BoundingBox bb1 = new BoundingBox();
+				final BoundingBox bb2 = new BoundingBox();	
+
 				@Override
 				public int compare(ChunkKey o1, ChunkKey o2) 
 				{
-					o1.populateCenter( TMP_V1 );
-					o2.populateCenter( TMP_V2 );
-					float dist1 = TMP_V1.dst2( pointInCameraDirection );
-					float dist2 = TMP_V2.dst2( pointInCameraDirection );
-					if ( dist1 < dist2 ) {
+					ChunkKey.populateBoundingBox( o1.x , o1.y , o1.z , bb1 );
+					ChunkKey.populateBoundingBox( o2.x , o2.y , o2.z , bb2 );
+					final boolean visible1 = camera.frustum.boundsInFrustum( bb1 );
+					final boolean visible2 = camera.frustum.boundsInFrustum( bb1 );
+					if ( visible1 && ! visible2 ) {
 						return -1;
-					} 
-					if ( dist1 > dist2 ) {
-						return 1; 
+					}
+					if ( ! visible1 && visible2 ) {
+						return 1;
 					}
 					return 0;
 				}
@@ -459,7 +468,7 @@ public class ChunkManager
 				chunkList.add( newChunk );					
 			}
 		}
-		
+
 		if ( existing == null ) 
 		{
 			if ( chunkVisible ) 
@@ -487,7 +496,7 @@ public class ChunkManager
 				throw new RuntimeException(e);
 			}			
 		}
-		
+
 		if ( existing != null ) 
 		{
 			System.err.println("-- Disposing chunk "+newChunk+", concurrent update already created another instance");
@@ -506,7 +515,7 @@ public class ChunkManager
 	private void queueAsyncChunkUpdate(Chunk chunk) {
 		chunkUpdater.queueChunkUpdate( chunk );
 	}
-	
+
 	private void addAllVisibleChunks()
 	{
 		final ArrayList<Chunk> tmpList=new ArrayList<Chunk>();
@@ -582,7 +591,7 @@ public class ChunkManager
 	{
 		final byte[] blockTypes = chunk.blockType;
 		final byte[] lightLevels = chunk.lightLevel;
-		
+
 		// set light level of blocks that are directly hit by sunlight (no opaque block above them)
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) {
 			for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 

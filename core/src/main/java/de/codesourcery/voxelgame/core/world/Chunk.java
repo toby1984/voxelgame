@@ -27,13 +27,13 @@ public final class Chunk implements Poolable
 	public static final int BLOCKS_Z = 32; 
 	
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 16f;
+	public static final float BLOCK_WIDTH = 8f;
 	
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 16f;
+	public static final float BLOCK_HEIGHT = 8f;
 	
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 16f;	
+	public static final float BLOCK_DEPTH = 8f;	
 	
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)		
@@ -57,6 +57,7 @@ public final class Chunk implements Poolable
 			this.x = x;
 			this.y = y;
 			this.z = z;
+			
 			int result = 31  + x;
 			result = 31 * result + y;
 			result = 31 * result + z;
