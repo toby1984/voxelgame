@@ -1,7 +1,5 @@
 package de.codesourcery.voxelgame.core.render;
 
-import java.util.concurrent.CountDownLatch;
-
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL11;
 import com.badlogic.gdx.graphics.GL20;

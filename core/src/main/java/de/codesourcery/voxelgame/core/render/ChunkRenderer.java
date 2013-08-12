@@ -154,7 +154,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	 */
 	public int setupMesh(Chunk chunk) {
 
-		int sideCount = 0; // debug
+		int quadCount = 0; // debug
 		int notCulled = 0; // debug
 
 		final float xOrig = chunk.boundingBox.min.x;
@@ -200,7 +200,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 							float blockCenterZ = zOrig + z * Chunk.BLOCK_DEPTH+(Chunk.BLOCK_DEPTH*0.5f);
 
 							if ( DEBUG_PERFORMANCE ) {
-								sideCount += Integer.bitCount( sidesMask );
+								quadCount += Integer.bitCount( sidesMask );
 							} 
 							final float lightLevel = chunk.lightLevel[ currentIndex ];
 							final float lightFactor = 0.3f + lightLevel*(0.7f/(float)(Block.MAX_LIGHT_LEVEL+1));
@@ -222,7 +222,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		
 		if ( DEBUG_PERFORMANCE && (frame%60)==0) 
 		{
-			System.out.println("Side count: "+sideCount+" (worst-case: "+notCulled*6+")");
+			System.out.println("Triangle count: "+quadCount*2);
 		}
 		return notCulled;
 	}

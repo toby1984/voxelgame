@@ -17,7 +17,7 @@ void main()
    vec3 shadedColor = max(0.5, dotProduct) * v_color.rgb;
              
    // per-pixel "fog" (actually modifies alpha-channel only)
-   const float zFar = 3000;
+   const float zFar = 5000;
    const float fogDensity = 1.5; 
    
    float distToCamera = (gl_FragCoord.z / gl_FragCoord.w)/zFar;
