@@ -574,15 +574,17 @@ public class ChunkManager
 			{
 				final boolean isVisible = ! chunk.isEmpty() && camera.frustum.boundsInFrustum( chunk.boundingBox );
 				chunk.setVisible( isVisible );
-				if ( isVisible && ! chunk.isDisposed() ) 
+				if ( ! chunk.isDisposed()  ) 
 				{
 					if ( chunk.isMeshRebuildRequired() ) 
 					{
 						queueAsyncChunkUpdate( chunk );
-					} else {
+					} 
+					else if ( isVisible ) 
+					{
 						tmpList.add( chunk );
-					}
-				} 
+					} 
+				}
 			}
 		}
 		visibleChunks.set(tmpList);

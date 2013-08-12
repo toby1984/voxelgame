@@ -29,13 +29,13 @@ public final class Chunk implements Poolable
 	public static final int BLOCKS_Z = 32; 
 	
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 16f;
+	public static final float BLOCK_WIDTH = 22f;
 	
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 16f;
+	public static final float BLOCK_HEIGHT = 22f;
 	
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 16f;	
+	public static final float BLOCK_DEPTH = 22f;	
 	
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)		
@@ -45,8 +45,7 @@ public final class Chunk implements Poolable
 	public static final float HALF_CHUNK_HEIGHT = CHUNK_HEIGHT/2.0f;
 	public static final float HALF_CHUNK_DEPTH = CHUNK_DEPTH/2.0f;	
 	
-	// FLAGS
-	
+	// FLAGS	
 	public static final class ChunkKey 
 	{
 		public final int x;
