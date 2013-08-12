@@ -35,7 +35,7 @@ public class TextureAtlasUtil
 	private static final Color DEBUG_RENDER_BOUNDS_COLOR = Color.ORANGE;
 	private static final boolean DEBUG_TEXTURE_COORDS = true;
 	
-	private static final boolean CREATE_SINGLE_COLORED_BLOCKS = true;
+	private static final boolean CREATE_SINGLE_COLORED_BLOCKS = false;
 	
 	private static final boolean DEBUG_TEXT = false;
 	

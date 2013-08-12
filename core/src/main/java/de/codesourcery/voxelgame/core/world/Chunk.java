@@ -235,10 +235,10 @@ public final class Chunk implements Poolable
 	{
 		synchronized(this) 
 		{
+			System.out.println("Changed type of block "+blockX+"/"+blockY+"/"+blockZ+" of "+this+" to new type "+newType);			
 			blockType[blockX+BLOCKS_X*blockY+(BLOCKS_X*BLOCKS_Y)*blockZ]=newType;
 			setChangedSinceLoad(true); // mark as dirty so chunk stored on disk will be updated
 			setMeshRebuildRequired(true);
-			System.out.println("Changed type of block "+blockX+"/"+blockY+"/"+blockZ+" of "+this+" to new type "+newType);
 		}
 		invalidateAdjacentChunks(blockX, blockY, blockZ, chunkManager);
 		chunkManager.chunkChanged( this );		
