@@ -35,6 +35,8 @@ public class TextureAtlasUtil
 	private static final Color DEBUG_RENDER_BOUNDS_COLOR = Color.ORANGE;
 	private static final boolean DEBUG_TEXTURE_COORDS = true;
 	
+	private static final boolean CREATE_SINGLE_COLORED_BLOCKS = true;
+	
 	private static final boolean DEBUG_TEXT = false;
 	
 	/**
@@ -65,7 +67,14 @@ public class TextureAtlasUtil
 	private static BufferedImage createAtlas() 
 	{
 		final int FACE_COUNT = 6;
-		final Color[] faceColors = {Color.YELLOW,Color.PINK,Color.RED,Color.BLUE,Color.GREEN,Color.MAGENTA};
+		final Color[] faceColors;
+		if ( CREATE_SINGLE_COLORED_BLOCKS ) 
+		{
+			final Color col = new Color(0,200,0);
+			faceColors = new Color[]{col,col,col,col,col,col};
+		} else {
+			faceColors = new Color[]{Color.YELLOW,Color.PINK,Color.RED,Color.BLUE,Color.GREEN,Color.MAGENTA};
+		}
 		
 		int sizeX = SUBTEXTURE_X_ORIGIN + 6 * BLOCK_TEXTURE_SIZE+5 * SUBTEXTURE_SPACING;
 		int sizeY = SUBTEXTURE_Y_ORIGIN + (Block.Type.MAX+1)*BLOCK_TEXTURE_SIZE+Block.Type.MAX*SUBTEXTURE_SPACING;

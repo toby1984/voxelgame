@@ -226,25 +226,25 @@ public final class BlockRenderer implements Disposable {
 					0,0,1, // normal
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V					
-					lightFactor );
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					0,0,1, // normal
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V					
-					lightFactor);
+					1.0f); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					0,0,1, // normal
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture U		
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V						
-					lightFactor );
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					0,0,1, // normal
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V					
-					lightFactor );
+					1.0f ); // lightFactor
 
 			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
 		}
@@ -261,25 +261,25 @@ public final class BlockRenderer implements Disposable {
 					0,0,-1, // normal
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V					
-					lightFactor );
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U	
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V	
-					lightFactor );
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U		
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
-					lightFactor ); 
+					1.0f ); // lightFactor 
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture UV
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V	
-					lightFactor ); 
+					1.0f );  // lightFactor
 
 			indexBuilder.put( (short) p2,(short) p3, (short) p1 , (short) p1 , (short) p3 , (short) p0 );
 		}		
@@ -296,25 +296,25 @@ public final class BlockRenderer implements Disposable {
 					-1,0,0, // normal
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V
-					lightFactor );
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					-1,0,0, // normal
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V
-					lightFactor );
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					-1,0,0, // normal
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture U
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V
-					lightFactor );
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					-1,0,0, // normal
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
-					lightFactor );
+					1.0f ); // lightFactor
 
 			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
 		}	
@@ -331,25 +331,25 @@ public final class BlockRenderer implements Disposable {
 					1,0,0, // normal
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U		
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V
-					lightFactor ); 
+					1.0f );  // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					1,0,0, // normal
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V
-					lightFactor ); 
+					1.0f );  // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					1,0,0, // normal
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture U
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V
-					lightFactor ); 
+					1.0f );  // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					1,0,0, // normal
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
-					lightFactor ); 
+					1.0f );  // lightFactor
 
 			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
 		}		

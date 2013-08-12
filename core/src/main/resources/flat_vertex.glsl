@@ -31,7 +31,7 @@ void main()
    vec3 eyeVertexNormalized = eyeVertex.xyz / eyeVertex.w;
    
    // const vec3 lightPos = vec3(eyeVertexNormalized.x,-10000,eyeVertexNormalized.z);
-   const vec3 lightPos = u_cameraRotation * vec3(0,10000,0);
+   const vec3 lightPos = u_cameraPosition.xyz; // u_cameraRotation * vec3(0,10000,0);
       
    // normal vector to light source
    v_lightDir = normalize(lightPos - eyeVertex);
