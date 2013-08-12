@@ -14,6 +14,7 @@ import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.Texture.TextureWrap;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Matrix4;
@@ -25,11 +26,13 @@ import de.codesourcery.voxelgame.core.render.BlockRenderer;
 import de.codesourcery.voxelgame.core.render.ChunkRenderer;
 import de.codesourcery.voxelgame.core.render.IChunkRenderer;
 import de.codesourcery.voxelgame.core.util.TextureAtlasUtil;
+import de.codesourcery.voxelgame.core.world.Bullet;
 import de.codesourcery.voxelgame.core.world.Chunk;
 import de.codesourcery.voxelgame.core.world.ChunkFactory;
 import de.codesourcery.voxelgame.core.world.ChunkManager;
 import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
 import de.codesourcery.voxelgame.core.world.DefaultChunkStorage;
+import de.codesourcery.voxelgame.core.world.TickListenerContainer;
 
 public class Main implements ApplicationListener {
 
@@ -54,13 +57,17 @@ public class Main implements ApplicationListener {
 	private BitmapFont font;
 	private SkyBox skyBox;
 	private ShapeRenderer shapeRenderer;
+	private ShaderProgram meshShader;
 
 	private Texture blockTextures;
-
+	
 	private final Hit targetedBlock = new Hit();
 	private boolean nonAirBlockSelected = false;
 
-	private void setupTextures() {
+	private final TickListenerContainer tickListeners = new TickListenerContainer();
+	
+	private void setupTextures()
+	{
 		crosshair = new Texture(Gdx.files.internal("crosshair.png"));
 
 		// setup texture atlas with block textures
@@ -104,6 +111,8 @@ public class Main implements ApplicationListener {
 		
 		chunkManager = new ChunkManager(camera,chunkStorage);
 
+		meshShader = ChunkRenderer.loadShader( "/coloredmesh_vertex.glsl" , "/coloredmesh_fragment.glsl" );
+		
 		shapeRenderer = new ShapeRenderer();
 
 		spriteBatch = new SpriteBatch();
@@ -120,10 +129,11 @@ public class Main implements ApplicationListener {
 			@Override
 			public void onLeftClick() 
 			{
-				if ( nonAirBlockSelected ) 
-				{
-					targetedBlock.chunk.setBlockType( targetedBlock.blockX , targetedBlock.blockY , targetedBlock.blockZ , chunkManager , Block.Type.AIR );
-				}
+//				if ( nonAirBlockSelected ) 
+//				{
+//					targetedBlock.chunk.setBlockType( targetedBlock.blockX , targetedBlock.blockY , targetedBlock.blockZ , chunkManager , Block.Type.AIR );
+//				}
+				tickListeners.add( new Bullet( meshShader , camController.camera.position , camController.camera.direction ) );
 			}
 
 			@Override
@@ -315,16 +325,19 @@ public class Main implements ApplicationListener {
 		Gdx.gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
 
 		camController.update();
-
+		
 		// render sky
-		skyBox.render(camera);
+ 	     skyBox.render(camera);
 
 		// bind block texture atlas
 		blockTextures.bind();
 
 		// render blocks
 		chunkRenderer.render();
-
+		
+		// invoke tick listeners
+		tickListeners.tick( camController );		
+		
 		// render outline of targeted block
 
 		// get pick-ray through center of screen
@@ -390,6 +403,8 @@ public class Main implements ApplicationListener {
 
 		spriteBatch.dispose();
 		shapeRenderer.dispose();
+		
+		meshShader.dispose();
 	}
 
 	@Override
