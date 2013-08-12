@@ -55,7 +55,7 @@ public class ChunkManager
 	 * |  |  |  |  |  |
 	 * +--+--+--+--+--+
 	 */
-	public static final int LOAD_SURROUNDING_CHUNKS = 5;
+	public static final int LOAD_SURROUNDING_CHUNKS = 4;
 
 	private final Vector3 TMP = new Vector3();
 
@@ -113,7 +113,7 @@ public class ChunkManager
 					updateVisibleChunksList();
 				}
 				try {
-					java.lang.Thread.sleep(100);
+					java.lang.Thread.sleep(20);
 				} catch(Exception e) {
 				}
 			}
@@ -333,7 +333,8 @@ public class ChunkManager
 
 		if ( ! toLoad.isEmpty() ) 
 		{ 
-			// schedule chunk loading by proximity to point along view direction
+			// sort loading of chunks so that those intersecting the view frustum
+			// are processed first
 			Collections.sort( toLoad , new Comparator<ChunkKey>()  
 					{
 

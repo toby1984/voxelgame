@@ -19,7 +19,7 @@ import de.codesourcery.voxelgame.core.world.IChunkVisitor;
 
 public class ChunkRenderer implements Disposable , IChunkRenderer {
 
-	private static final boolean DEBUG_PERFORMANCE = false;
+	private static final boolean DEBUG_PERFORMANCE = true;
 
 	private long frame = 0;
 
@@ -76,13 +76,25 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		return result.toString();
 	}		
 	
-	private final IChunkVisitor visitor = new IChunkVisitor() {
+	private final MyChunkVisitor visitor = new MyChunkVisitor();
+	
+	protected final class MyChunkVisitor implements IChunkVisitor {
 
+		public int chunkCount = 0;
+		public int renderedBlockCount = 0;
+		
 		@Override
 		public void visit(Chunk chunk) {
 			renderChunk(chunk);
+			renderedBlockCount+=chunk.renderedBlockCount;
+			chunkCount++;
 		}
-	};
+		
+		public void reset() {
+			chunkCount = 0;
+			renderedBlockCount=0;
+		}
+	}
 
 	public void render() 
 	{
@@ -92,6 +104,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 			renderTime = -System.currentTimeMillis();
 		}
 		
+		visitor.reset();
 		chunkManager.visitVisibleChunks( visitor );
 
 		if ( DEBUG_PERFORMANCE ) 
@@ -100,7 +113,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 			frame++;
 			if ( (frame%240)==0) 
 			{
-				System.out.println("RENDERING: rendering: "+renderTime+" ms");
+				System.out.println("RENDERING: rendering: "+renderTime+" ms ("+visitor.chunkCount+" chunks, "+visitor.renderedBlockCount+" blocks)");
 			}			
 		}
 	}
@@ -205,7 +218,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		renderer.end();
 		
 		chunk.setMeshRebuildRequired( false );		
-
+		chunk.renderedBlockCount = notCulled;
+		
 		if ( DEBUG_PERFORMANCE && (frame%60)==0) 
 		{
 			System.out.println("Side count: "+sideCount+" (worst-case: "+notCulled*6+")");

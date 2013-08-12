@@ -16,7 +16,7 @@ public class MainDesktop
 		if ( Constants.BENCHMARK_MODE ) {
 			config.foregroundFPS=0;
 		}
-		config.fullscreen=Constants.BENCHMARK_MODE;
+		// config.fullscreen=Constants.BENCHMARK_MODE;
 		config.width = 800;
 		config.height = 600;
 		new LwjglApplication(new Main(), config);

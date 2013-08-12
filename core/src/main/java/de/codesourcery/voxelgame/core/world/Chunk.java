@@ -1,5 +1,7 @@
 package de.codesourcery.voxelgame.core.world;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.badlogic.gdx.math.Intersector;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
@@ -27,13 +29,13 @@ public final class Chunk implements Poolable
 	public static final int BLOCKS_Z = 32; 
 	
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 8f;
+	public static final float BLOCK_WIDTH = 16f;
 	
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 8f;
+	public static final float BLOCK_HEIGHT = 16f;
 	
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 8f;	
+	public static final float BLOCK_DEPTH = 16f;	
 	
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)		
@@ -158,8 +160,12 @@ public final class Chunk implements Poolable
 	public final byte[] lightLevel;
 	
 	public final BlockRenderer blockRenderer;
+	public int renderedBlockCount=0; // TODO: Remove debug code
 
-	private int flags = FLAG_MESH_REBUILD_REQUIRED;
+	// hint: Need to use CAS here because using synchronize(this) causes random dead-locks
+	// because of ChunkRenderer#determineSidesToRender() accessing adjacent chunks
+	// in a random order and thus causing inconsistent lock order
+	private final AtomicInteger flags = new AtomicInteger( FLAG_MESH_REBUILD_REQUIRED );
 	
 	private int hashCode;
 	
@@ -205,7 +211,7 @@ public final class Chunk implements Poolable
 		
 		ChunkKey.populateBoundingBox( x,y,z, this.boundingBox );
 		
-		flags = FLAG_MESH_REBUILD_REQUIRED;
+		flags.set( FLAG_MESH_REBUILD_REQUIRED );
 		accessCounter = 0;
 		this.hashCode = Chunk.calcChunkKey(x,y,z);
 	}
@@ -441,6 +447,7 @@ public final class Chunk implements Poolable
 	public final void dispose() 
 	{
 		blockRenderer.dispose();
+		renderedBlockCount = 0;
 		setFlag(FLAG_DISPOSED,true);
 	}
 
@@ -519,7 +526,7 @@ public final class Chunk implements Poolable
 	
 	public boolean isInvisible() 
 	{
-		return ( this.flags & FLAG_VISIBLE ) == 0; 
+		return ( this.flags.get() & FLAG_VISIBLE ) == 0;
 	}	
 	
 	public boolean isMeshRebuildRequired() {
@@ -540,7 +547,7 @@ public final class Chunk implements Poolable
 	
 	public boolean isNotDisposed() 
 	{
-		return (flags & FLAG_DISPOSED) == 0;
+		return (flags.get() & FLAG_DISPOSED) == 0;
 	}	
 	
 	public void setEmpty(boolean isEmpty) {
@@ -549,10 +556,6 @@ public final class Chunk implements Poolable
 	
 	public boolean isEmpty() {
 		return isFlagSet(FLAG_IS_EMPTY );
-	}
-	
-	public void setFlags(int mask) {
-		this.flags |= mask;
 	}
 	
 	public void setChangedSinceLoad(boolean isChanged) {
@@ -565,14 +568,19 @@ public final class Chunk implements Poolable
 	
 	private void setFlag(int mask,boolean enable) 
 	{
-		if ( enable ) {
-			flags |= mask;
-		} else {
-			flags &= ~mask;
-		}
+		int currentValue = this.flags.get();	
+		int newValue = enable ? currentValue | mask : currentValue & ~mask;
+		while ( ! this.flags.compareAndSet( currentValue , newValue ) ) 
+		{
+			currentValue = this.flags.get();
+			newValue = enable ? currentValue | mask : currentValue & ~mask;
+		}		
 	}	
 	
-	private boolean isFlagSet(int mask) { return ( flags & mask ) != 0;  }
+	private boolean isFlagSet(int mask) 
+	{
+		return ( flags.get() & mask ) != 0;
+	}
 	
 	private String flagsToString() 
 	{

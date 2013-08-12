@@ -7,7 +7,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import de.codesourcery.voxelgame.core.Block;
 import de.codesourcery.voxelgame.core.Constants;
 
 
@@ -35,13 +34,24 @@ public class DefaultChunkStorage implements IChunkStorage
 		}
 
 		Chunk result = null;
-		if ( Constants.USE_PERSISTENT_STORAGE ) {
-			result = tryLoadFromDisk(chunkX, chunkY, chunkZ);
+		if ( Constants.USE_PERSISTENT_STORAGE ) 
+		{
+			try {
+				result = tryLoadFromDisk(chunkX, chunkY, chunkZ);
+			} 
+			catch(IOException e) {
+				e.printStackTrace();
+			}
 		}
 		if ( result == null ) {
 			result = chunkFactory.createChunk(chunkX, chunkY,chunkZ);
-			if ( Constants.USE_PERSISTENT_STORAGE ) {
-				writeToDisk( result );
+			if ( Constants.USE_PERSISTENT_STORAGE ) 
+			{
+				try {
+					writeToDisk( result );
+				} catch(IOException e) {
+					e.printStackTrace();
+				}				
 			}
 		}
 		return result;
@@ -60,7 +70,6 @@ public class DefaultChunkStorage implements IChunkStorage
 
 	private void writeToDisk(Chunk chunk) throws IOException 
 	{
-		final byte[] blockTypes = chunk.blockType;
 		final File f = createPath(chunk.x,chunk.y,chunk.z);
 		final BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(f));
 		

@@ -209,6 +209,9 @@ public final class BlockRenderer implements Disposable {
 	{
 		final float[] textureUV = blockTextureCoords[ blockType ];
 
+		if ( vertexCount > 65535 ) {
+			System.err.println("More than 65535 vertices ?");
+		}
 		int p0,p1,p2,p3;
 		if ( (sideMask & SIDE_FRONT ) != 0 ) {
 
