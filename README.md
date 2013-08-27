@@ -1,7 +1,7 @@
 voxelgame
 =========
 
-Toying around with a simple voxel engine and libgdx. You need to have a OpenGL 2.0+ compatible graphics card and appropriate drivers installed.
+A simple voxel engine that uses 3D simplex noise to procedurally generate an infinite,random terrain. You need to have a OpenGL 2.0+ compatible graphics card and appropriate drivers installed.
 
 To run:
 
