@@ -1,5 +1,7 @@
 package de.codesourcery.voxelgame.core.render;
 
+import com.badlogic.gdx.math.Vector3;
+
 public final class FloatArrayBuilder {
 
 	public float[] array;

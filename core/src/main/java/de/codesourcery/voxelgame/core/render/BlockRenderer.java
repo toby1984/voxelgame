@@ -503,7 +503,7 @@ public final class BlockRenderer implements Disposable {
 		}
 
 		int indicesRemaining = indexCount;
-		while ( indicesRemaining > 9 ) 
+		while ( indicesRemaining > 0 ) 
 		{
 			int indicesToDraw = indicesRemaining > 65535 ? 65535 : indicesRemaining;
 			Gdx.graphics.getGL20().glDrawElements(GL20.GL_TRIANGLES, indicesToDraw , GL20.GL_UNSIGNED_SHORT , 0);

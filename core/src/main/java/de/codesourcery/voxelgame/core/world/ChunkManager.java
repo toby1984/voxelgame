@@ -309,9 +309,6 @@ public class ChunkManager
 		return visibleChunks.get();
 	}
 
-	private final Vector3 TMP_V1 = new Vector3();
-	private final Vector3 TMP_V2 = new Vector3();
-
 	private void cameraMovedToNewChunk() 
 	{
 		// System.out.println("Reloading chunks around: "+cameraChunkX+" / "+cameraChunkY+" / "+cameraChunkZ);
