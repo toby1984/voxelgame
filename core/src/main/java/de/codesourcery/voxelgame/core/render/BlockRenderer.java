@@ -31,14 +31,16 @@ public final class BlockRenderer implements Disposable {
 	private static final boolean CULL_FACES = true;
 	private static final boolean DEPTH_BUFFER = true;
 
+	public static boolean DEBUG_RENDER_WIREFRAME = false;
+
 	/*
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,1,0, // normal
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V
-					lightFactor );	 
+					lightFactor );
 	 */
-	private static final int ELEMENTS_PER_VERTEX = 3 + 3 + 2 + 1; // vec3(position) + vec3(normal) + vec4(color) 
+	private static final int ELEMENTS_PER_VERTEX = 3 + 3 + 2 + 1; // vec3(position) + vec3(normal) + vec4(color)
 
 	// Worst-case: checker-style "swiss cheese" with every 2nd block being empty.
 	private static final int WORST_CASE_CUBE_COUNT = Chunk.BLOCKS_X*Chunk.BLOCKS_Y*Chunk.BLOCKS_Z;
@@ -46,30 +48,30 @@ public final class BlockRenderer implements Disposable {
 	/*
 	 * Each cube currently consists of 36 vertices ( 6 faces with 2 triangles each ), could be reduced
 	 * by using triangle strips.
-	 */	
+	 */
 	@SuppressWarnings("unused")
 	private static final int WORST_CASE_VERTEX_COUNT = WORST_CASE_CUBE_COUNT*36;
 
-	/* Array with UV coordinates (that index into a texture atlas texture) for triangles on each block face. 
-	 * 
+	/* Array with UV coordinates (that index into a texture atlas texture) for triangles on each block face.
+	 *
 	 * float[blockType][uv coordinates array]
-	 * 
+	 *
 	 * UV coordinates for vertices are stored in counter-clockwise vertex order:
-	 * 
+	 *
 	 *  0 --3
 	 *  |   |
 	 *  |   |
 	 *  1---2
-	 * 
+	 *
 	 * So the UV coordinates for Vertex 1 in the FRONT triangle of the front of a SOLID block start at
-	 * 
+	 *
 	 *  blockTextureCoords[Block.Type.SOLID][TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_LEFT] , the UV coordinates for Vertex 3 in the BACK triangle of the front of a SOLID block start at
-	 *  
+	 *
 	 *  blockTextureCoords[Block.Type.SOLID][TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT]
 	 */
 	private static float[][] blockTextureCoords;
 
-	private static final int TEX_OFFSET_FRONT  = 0; 
+	private static final int TEX_OFFSET_FRONT  = 0;
 	private static final int TEX_OFFSET_BACK= 1*4*2; // index into UV-texture coordinates for back quad
 	private static final int TEX_OFFSET_LEFT = 2*4*2; // index into UV-texture coordinates for left quad
 	private static final int TEX_OFFSET_RIGHT = 3*4*2; // index into UV-texture coordinates for right quad
@@ -94,35 +96,35 @@ public final class BlockRenderer implements Disposable {
 
 	private int vertexCount = 0;
 
-	public BlockRenderer(int indexArraySize,int vertexArraySize) 
+	public BlockRenderer(int indexArraySize,int vertexArraySize)
 	{
 		indexBuilder = new ShortArrayBuilder(indexArraySize,1000);
 		vertexBuilder = new FloatArrayBuilder(vertexArraySize,1000*ELEMENTS_PER_VERTEX);
 	}
 
-	public BlockRenderer() 
+	public BlockRenderer()
 	{
 		this(20000,100000);
 	}
 
-	public BlockRenderer begin() 
+	public BlockRenderer begin()
 	{
 		indexBuilder.begin();
 		vertexBuilder.begin();
-		vertexCount = 0; 
+		vertexCount = 0;
 		return this;
 	}
 
 	/**
 	 * Setup texture coordinates (MUST be called once before using any block renderer).
-	 * 
+	 *
 	 * This method requires a rectangular texture (size == width).
-	 * 
+	 *
 	 * @param textureSize texture width/height in pixels
 	 * @param faceSize Heigth/width of a single block face in pixels
-	 * @param textureSpacing space in pixels between any two block textures or towards the texture image boundaries 
+	 * @param textureSpacing space in pixels between any two block textures or towards the texture image boundaries
 	 */
-	public static void setupTextureCoordinates(int textureSize,int faceSize,int textureSpacing) 
+	public static void setupTextureCoordinates(int textureSize,int faceSize,int textureSpacing)
 	{
 		if ( blockTextureCoords == null ) {
 			blockTextureCoords = createTextureCoordinates(textureSize,faceSize,textureSpacing);
@@ -130,37 +132,37 @@ public final class BlockRenderer implements Disposable {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param textureSize texture size in pixels (texture is assumed to be rectangular)
 	 * @param faceSize size of a single block face texture (rectangular)
 	 * @param textureSpacing space in pixels between any two adjacent textures and to the texture atlas' borders
 	 * @return
 	 */
-	private static float[][] createTextureCoordinates(int textureSize,int faceSize,int textureSpacing) 
+	private static float[][] createTextureCoordinates(int textureSize,int faceSize,int textureSpacing)
 	{
 		/*
 		 * The texture atlas is assumed to hold
 		 * 6 textures (one for each block face) per row
 		 * in the following order
-		 * 
+		 *
 		 *  FRONT BACK LEFT RIGHT TOP BOTTOM
 		 */
-		float textureSpacingWidth=textureSpacing/(float) textureSize;  // width of a single block texture in texture coordinates (including spacing 
-		float textureSpacingHeight=textureSpacing/(float) textureSize; // height of a single block texture in texture coordinates			
+		float textureSpacingWidth=textureSpacing/(float) textureSize;  // width of a single block texture in texture coordinates (including spacing
+		float textureSpacingHeight=textureSpacing/(float) textureSize; // height of a single block texture in texture coordinates
 
-		float xOrigin = textureSpacingWidth; // X coordinate of top-left corner of front face texture for block type 0 
+		float xOrigin = textureSpacingWidth; // X coordinate of top-left corner of front face texture for block type 0
 		float yOrigin = textureSpacingHeight; // X coordinate of top-left corner of front face texture for block type 0
 
 		float innerTextureWidth=faceSize/(float) textureSize;  // width of a single block texture in texture coordinates
-		float innerTextureHeight=faceSize/(float) textureSize; // height of a single block texture in texture coordinates		
+		float innerTextureHeight=faceSize/(float) textureSize; // height of a single block texture in texture coordinates
 
 		float[][] result = new float[ (Block.Type.MAX+1) ][];
-		for ( byte type = 0 ; type <= Block.Type.MAX ; type++) 
+		for ( byte type = 0 ; type <= Block.Type.MAX ; type++)
 		{
 			float[] tmp = new float[6*4*2 ]; // 6 faces * 4 VerticesPerQuad * 2 UV-coordinates floats
 			result[type] = tmp;
 			int ptr = 0;
-			for ( int face = 0 ; face < 6 ; face++ ) 
+			for ( int face = 0 ; face < 6 ; face++ )
 			{
 				// top-left corner of quad texture
 				float topLeftX = xOrigin + face*innerTextureWidth + face*textureSpacingWidth;
@@ -178,19 +180,19 @@ public final class BlockRenderer implements Disposable {
 				float topRightX = topLeftX+innerTextureWidth;
 				float topRightY = topLeftY;
 
-				// store UV-coordinates of each quad corner, 
+				// store UV-coordinates of each quad corner,
 				// order MUST be TOP_LEFT,TOP_RIGHT,BOTTOM_RIGHT,BOTTOM_LEFT so it matches with code in BlockRenderer#addBlock() !!!
 				tmp[ptr++]=topLeftX;
 				tmp[ptr++]=topLeftY;
 
 				tmp[ptr++]=topRightX;
-				tmp[ptr++]=topRightY;					
+				tmp[ptr++]=topRightY;
 
 				tmp[ptr++]=bottomRightX;
 				tmp[ptr++]=bottomRightY;
 
 				tmp[ptr++]=bottomLeftX;
-				tmp[ptr++]=bottomLeftY;			
+				tmp[ptr++]=bottomLeftY;
 
 				if (DEBUG_TEXTURE_COORDS) {
 					System.out.println("---- Block type: "+type+" , face "+face+" , TOP_LEFT     = ("+topLeftX+","+topLeftY+")");
@@ -201,9 +203,9 @@ public final class BlockRenderer implements Disposable {
 			}
 		}
 		return result;
-	}	
+	}
 
-	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, float lightFactor,byte blockType ,int sideMask ) 
+	public void addBlock(float centerX,float centerY,float centerZ, float halfBlockSize, float lightFactor,byte blockType ,int sideMask )
 	{
 		final float[] textureUV = blockTextureCoords[ blockType ];
 
@@ -223,28 +225,36 @@ public final class BlockRenderer implements Disposable {
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					0,0,1, // normal
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U
-					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V					
+					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V
 					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					0,0,1, // normal
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
-					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V					
+					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V
 					1.0f); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					0,0,1, // normal
-					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture U		
-					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V						
+					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture U
+					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V
 					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					0,0,1, // normal
 					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U
-					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V					
+					textureUV[TEX_OFFSET_FRONT+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
 					1.0f ); // lightFactor
 
-			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
+			if ( DEBUG_RENDER_WIREFRAME )
+			{
+				indexBuilder.put( (short) p0 , (short) p3,
+						          (short) p3 , (short) p2,
+						          (short) p2 , (short) p1 ,
+						          (short) p1 , (short) p0) ;
+			} else {
+				indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
+			}
 		}
 
 		if ( (sideMask & SIDE_BACK ) != 0 ) {
@@ -258,29 +268,37 @@ public final class BlockRenderer implements Disposable {
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V					
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V
 					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U	
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V	
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V
 					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U		
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
-					1.0f ); // lightFactor 
+					1.0f ); // lightFactor
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,0,-1, // normal
 					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture UV
-					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V	
+					textureUV[TEX_OFFSET_BACK+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V
 					1.0f );  // lightFactor
 
-			indexBuilder.put( (short) p2,(short) p3, (short) p1 , (short) p1 , (short) p3 , (short) p0 );
-		}		
+			if ( DEBUG_RENDER_WIREFRAME )
+			{
+				indexBuilder.put( (short) p2 , (short) p3,
+						          (short) p3 , (short) p0,
+						          (short) p0 , (short) p1 ,
+						          (short) p1 , (short) p2) ;
+			} else {
+				indexBuilder.put( (short) p2,(short) p3, (short) p1 , (short) p1 , (short) p3 , (short) p0 );
+			}
+		}
 
 		if ( (sideMask & SIDE_LEFT ) != 0 ) {
 
@@ -314,8 +332,16 @@ public final class BlockRenderer implements Disposable {
 					textureUV[TEX_OFFSET_LEFT+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
 					1.0f ); // lightFactor
 
-			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
-		}	
+			if ( DEBUG_RENDER_WIREFRAME )
+			{
+				indexBuilder.put( (short) p0 , (short) p3,
+						          (short) p3 , (short) p2,
+						          (short) p2 , (short) p1 ,
+						          (short) p1 , (short) p0) ;
+			} else {
+				indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
+			}
+		}
 
 		if ( (sideMask & SIDE_RIGHT ) != 0 ) {
 
@@ -327,7 +353,7 @@ public final class BlockRenderer implements Disposable {
 
 			vertexBuilder.put( centerX+halfBlockSize  , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					1,0,0, // normal
-					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U		
+					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_TOP_LEFT], // texture U
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture V
 					1.0f );  // lightFactor
 
@@ -349,8 +375,16 @@ public final class BlockRenderer implements Disposable {
 					textureUV[TEX_OFFSET_RIGHT+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
 					1.0f );  // lightFactor
 
-			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
-		}		
+			if ( DEBUG_RENDER_WIREFRAME )
+			{
+				indexBuilder.put( (short) p0 , (short) p3,
+						          (short) p3 , (short) p2,
+						          (short) p2 , (short) p1 ,
+						          (short) p1 , (short) p0) ;
+			} else {
+				indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
+			}
+		}
 
 		if ( (sideMask & SIDE_TOP ) != 0 ) {
 
@@ -370,22 +404,30 @@ public final class BlockRenderer implements Disposable {
 					0,1,0, // normal
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture U
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture V
-					lightFactor ); 
+					lightFactor );
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					0,1,0, // normal
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_BOTTOM_RIGHT], // texture U
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_BOTTOM_RIGHT+1], // texture V
-					lightFactor ); 
+					lightFactor );
 
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ + halfBlockSize , // position
 					0,1,0, // normal
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_BOTTOM_LEFT], // texture U
 					textureUV[TEX_OFFSET_TOP+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture V
-					lightFactor ); 
+					lightFactor );
 
-			indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
-		}	
+			if ( DEBUG_RENDER_WIREFRAME )
+			{
+				indexBuilder.put( (short) p0 , (short) p3,
+						          (short) p3 , (short) p2,
+						          (short) p2 , (short) p1 ,
+						          (short) p1 , (short) p0) ;
+			} else {
+				indexBuilder.put( (short) p0,(short) p3, (short) p2 , (short) p0 , (short) p2 , (short) p1 );
+			}
+		}
 
 		if ( (sideMask & SIDE_BOTTOM ) != 0 ) {
 
@@ -399,13 +441,13 @@ public final class BlockRenderer implements Disposable {
 					0,-1,0, // normal
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_LEFT], // texture UV
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_LEFT+1], // texture UV
-					lightFactor ); 
+					lightFactor );
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ - halfBlockSize , // position
 					0,-1,0, // normal
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_RIGHT], // texture UV
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_TOP_RIGHT+1], // texture UV
-					lightFactor ); 
+					lightFactor );
 
 			vertexBuilder.put( centerX+halfBlockSize , centerY - halfBlockSize ,centerZ + halfBlockSize , // position
 					0,-1,0, // normal
@@ -419,27 +461,35 @@ public final class BlockRenderer implements Disposable {
 					textureUV[TEX_OFFSET_BOTTOM+TEX_OFFSET_VERTEX_BOTTOM_LEFT+1], // texture UV
 					lightFactor ); // color WHITE
 
-			indexBuilder.put( (short) p3,(short) p0, (short) p1 , (short) p3 , (short) p1 , (short) p2 );
-		}			
+			if ( DEBUG_RENDER_WIREFRAME )
+			{
+				indexBuilder.put( (short) p0 , (short) p3,
+						          (short) p3 , (short) p2,
+						          (short) p2 , (short) p1 ,
+						          (short) p1 , (short) p0) ;
+			} else {
+				indexBuilder.put( (short) p3,(short) p0, (short) p1 , (short) p3 , (short) p1 , (short) p2 );
+			}
+		}
 	}
 
-	private VertexBufferObject createVBO(int vertexCount) 
+	private VertexBufferObject createVBO(int vertexCount)
 	{
 		final VertexAttribute lightFactorAttribute  = new VertexAttribute( 250 , 1 , "a_lightFactor" ); // value in the range 0...1
-		final VertexAttribute[] attrs = new VertexAttribute[] 
+		final VertexAttribute[] attrs = new VertexAttribute[]
 				{
 				new VertexAttribute(Usage.Position, 3, ShaderProgram.POSITION_ATTRIBUTE),
 				new VertexAttribute(Usage.Normal, 3, ShaderProgram.NORMAL_ATTRIBUTE),
 				new VertexAttribute(Usage.TextureCoordinates, 2, ShaderProgram.TEXCOORD_ATTRIBUTE),
 				lightFactorAttribute // a float in the range [0...1] (no light ... full light)
 				};
-		return new VertexBufferObject(true, vertexCount , attrs );		
-	}	
+		return new VertexBufferObject(true, vertexCount , attrs );
+	}
 
-	public BlockRenderer end() 
+	public BlockRenderer end()
 	{
 		indexBuilder.end();
-		vertexBuilder.end();		
+		vertexBuilder.end();
 
 		if ( indexBuilder.actualSize() > maxIndexArraySize ) {
 			maxIndexArraySize = indexBuilder.actualSize();
@@ -452,14 +502,14 @@ public final class BlockRenderer implements Disposable {
 		return this;
 	}
 
-	public void render(ShaderProgram shader) 
+	public void render(ShaderProgram shader)
 	{
 		final int vertexCount = vertexBuilder.actualSize() / ELEMENTS_PER_VERTEX;
 		if ( vertexCount == 0 ) {
 			return;
 		}
 
-		if ( vbo == null ||  vbo.getNumMaxVertices() < vertexCount  ) 
+		if ( vbo == null ||  vbo.getNumMaxVertices() < vertexCount  )
 		{
 			if ( vbo != null ) {
 				vbo.dispose();
@@ -473,7 +523,7 @@ public final class BlockRenderer implements Disposable {
 		}
 
 		final int indexCount = indexBuilder.actualSize();
-		if ( ibo == null ||  ibo.getNumMaxIndices() < indexCount  ) 
+		if ( ibo == null ||  ibo.getNumMaxIndices() < indexCount  )
 		{
 			if ( ibo != null ) {
 				ibo.dispose();
@@ -484,7 +534,7 @@ public final class BlockRenderer implements Disposable {
 			}
 			ibo = createIBO( indexCount );
 			uploadDataToGPU = true;
-		}	
+		}
 
 		if ( CULL_FACES ) {
 			Gdx.graphics.getGL20().glEnable( GL20.GL_CULL_FACE );
@@ -503,10 +553,15 @@ public final class BlockRenderer implements Disposable {
 		}
 
 		int indicesRemaining = indexCount;
-		while ( indicesRemaining > 0 ) 
+		while ( indicesRemaining > 0 )
 		{
 			int indicesToDraw = indicesRemaining > 65535 ? 65535 : indicesRemaining;
-			Gdx.graphics.getGL20().glDrawElements(GL20.GL_TRIANGLES, indicesToDraw , GL20.GL_UNSIGNED_SHORT , 0);
+			if ( DEBUG_RENDER_WIREFRAME )
+			{
+				Gdx.graphics.getGL20().glDrawElements(GL20.GL_LINES , indicesToDraw , GL20.GL_UNSIGNED_SHORT , 0);
+			} else {
+				Gdx.graphics.getGL20().glDrawElements(GL20.GL_TRIANGLES, indicesToDraw , GL20.GL_UNSIGNED_SHORT , 0);
+			}
 			indicesRemaining -= indicesToDraw;
 		}
 
@@ -523,11 +578,11 @@ public final class BlockRenderer implements Disposable {
 	}
 
 	private IndexBufferObject createIBO(int indexCount) {
-		return new IndexBufferObject(true,indexCount); 
-	}		
+		return new IndexBufferObject(true,indexCount);
+	}
 
 	@Override
-	public void dispose() 
+	public void dispose()
 	{
 		if ( vbo != null ) {
 			vbo.dispose();

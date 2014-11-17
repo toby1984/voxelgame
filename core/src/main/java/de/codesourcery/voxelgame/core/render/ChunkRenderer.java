@@ -27,33 +27,37 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	private final ChunkManager chunkManager;
 	private final FPSCameraController cameraController;
 
-	public ChunkRenderer(ChunkManager chunkManager,FPSCameraController cameraController) 
+	public ChunkRenderer(ChunkManager chunkManager,FPSCameraController cameraController)
 	{
 		this.chunkManager = chunkManager;
 		this.cameraController = cameraController;
 		this.shader = loadShader();
 	}
 
-	private static ShaderProgram loadShader() {
+	private static ShaderProgram loadShader()
+	{
+		if ( BlockRenderer.DEBUG_RENDER_WIREFRAME ) {
+			return loadShader("/wireframe_vertex.glsl","/wireframe_fragment.glsl");
+		}
 		return loadShader("/flat_vertex.glsl","/flat_fragment.glsl");
 	}
-	
-	public static ShaderProgram loadShader(String vertexClassPath,String fragmentClassPath) 
+
+	public static ShaderProgram loadShader(String vertexClassPath,String fragmentClassPath)
 	{
 		try {
 			String vertex = readShaderFromClasspath( vertexClassPath );
 			String fragment = readShaderFromClasspath( fragmentClassPath );
 			ShaderProgram result = new ShaderProgram(vertex,fragment);
 			if ( ! result.isCompiled() ) {
-				
+
 				throw new RuntimeException("Failed to compile shaders: "+result.getLog());
 			}
 			return result;
-		} 
+		}
 		catch (IOException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
-		}		
+		}
 	}
 
 	private static String readShaderFromClasspath(String name) throws IOException {
@@ -74,75 +78,77 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 			reader.close();
 		}
 		return result.toString();
-	}		
-	
+	}
+
 	private final MyChunkVisitor visitor = new MyChunkVisitor();
-	
+
 	protected final class MyChunkVisitor implements IChunkVisitor {
 
 		public int chunkCount = 0;
 		public int renderedBlockCount = 0;
-		
+
 		@Override
 		public void visit(Chunk chunk) {
 			renderChunk(chunk);
 			renderedBlockCount+=chunk.renderedBlockCount;
 			chunkCount++;
 		}
-		
+
 		public void reset() {
 			chunkCount = 0;
 			renderedBlockCount=0;
 		}
 	}
 
-	public void render() 
+	@Override
+	public void render()
 	{
 		// DEBUG
 		long renderTime=0;
 		if ( DEBUG_PERFORMANCE ) {
 			renderTime = -System.currentTimeMillis();
 		}
-		
+
 		visitor.reset();
 		chunkManager.visitVisibleChunks( visitor );
 
-		if ( DEBUG_PERFORMANCE ) 
+		if ( DEBUG_PERFORMANCE )
 		{
 			renderTime+=System.currentTimeMillis();
 			frame++;
-			if ( (frame%240)==0) 
+			if ( (frame%240)==0)
 			{
 				System.out.println("RENDERING: rendering: "+renderTime+" ms ("+visitor.chunkCount+" chunks, "+visitor.renderedBlockCount+" blocks)");
-			}			
+			}
 		}
 	}
 
-	private void renderChunk(Chunk chunk) 
+	private void renderChunk(Chunk chunk)
 	{
 		final GL20 gl20 = Gdx.graphics.getGL20();
-		
+
 		gl20.glEnable (GL20.GL_BLEND);
 	    gl20.glBlendFunc (GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-	    
+
 		shader.begin();
 
 //		shader.setUniformf("u_cameraPosition" , cameraController.camera.position );
 		shader.setUniformMatrix("u_modelViewProjection", cameraController.camera.combined );
-		shader.setUniformMatrix("u_modelView", cameraController.camera.view );
-		
-		shader.setUniformMatrix("u_cameraRotation" , cameraController.normalMatrix );		
-		
+		if ( ! BlockRenderer.DEBUG_RENDER_WIREFRAME ) {
+			shader.setUniformMatrix("u_modelView", cameraController.camera.view );
+			shader.setUniformMatrix("u_cameraRotation" , cameraController.normalMatrix );
+		}
+
 		chunk.blockRenderer.render( shader );
-		
+
 		shader.end();
-		
+
 	    gl20.glBlendFunc (GL20.GL_ONE, GL20.GL_ZERO);
 	    gl20.glDisable(GL20.GL_BLEND);
 	}
 
 	@Override
-	public void dispose() 
+	public void dispose()
 	{
 		shader.dispose();
 	}
@@ -152,6 +158,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	 * @param chunk
 	 * @return
 	 */
+	@Override
 	public int setupMesh(Chunk chunk) {
 
 		int quadCount = 0; // debug
@@ -163,154 +170,157 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 		final BlockRenderer renderer = chunk.blockRenderer;
 		renderer.begin();
-		
-		final byte[] blocks = chunk.blockType;
 
-		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) 
+		if ( ! chunk.isEmpty() )
 		{
-			float blockCenterX = xOrig + x * Chunk.BLOCK_WIDTH+(Chunk.BLOCK_WIDTH*0.5f);
+			final byte[] blocks = chunk.blockType;
 
-			for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ ) 
+			for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ )
 			{
-				float blockCenterY = yOrig + y * Chunk.BLOCK_HEIGHT+(Chunk.BLOCK_HEIGHT*0.5f);				
-				for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ ) 
-				{
-					final int currentIndex = (x) + Chunk.BLOCKS_X * ( y ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ); 
-					final byte blockType = blocks[ currentIndex ];
-					if ( Block.isNoAirBlock( blockType ) ) 
-					{
-						int sidesMask;
-						// TODO: Rendering translucent blocks needs fixing
-						// see http://stackoverflow.com/questions/3388294/opengl-question-about-the-usage-of-gldepthmask/3390094#3390094
-						// and http://www.opengl.org/wiki/Transparency_Sorting
-						// need to use separate VBOs for translucent blocks and render them
-						// back-to-front with depth buffer disabled
-						if ( x != 0 && blockType == Block.Type.WATER ) 
-						{
-							if ( y == Chunk.BLOCKS_Y-1 || Block.isAirBlock( blocks[ (x) + Chunk.BLOCKS_X * ( y+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ) ] ) ) {
-								sidesMask = BlockRenderer.SIDE_TOP;
-							} else {
-								sidesMask = 0;
-							}
-						} else {
-							sidesMask = determineSidesToRender( chunk , x , y, z );
-						}
-						if ( sidesMask  != 0 ) 
-						{
-							float blockCenterZ = zOrig + z * Chunk.BLOCK_DEPTH+(Chunk.BLOCK_DEPTH*0.5f);
+				float blockCenterX = xOrig + x * Chunk.BLOCK_WIDTH+(Chunk.BLOCK_WIDTH*0.5f);
 
-							if ( DEBUG_PERFORMANCE ) {
-								quadCount += Integer.bitCount( sidesMask );
-							} 
-							final float lightLevel = chunk.lightLevel[ currentIndex ];
-							final float lightFactor = 0.3f + lightLevel*(0.7f/(float)(Block.MAX_LIGHT_LEVEL+1));
-							// final float lightFactor = 0.7f;
-							renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f ,lightFactor, blockType , sidesMask );
-							if ( DEBUG_PERFORMANCE ) {
-								notCulled++;
+				for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ )
+				{
+					float blockCenterY = yOrig + y * Chunk.BLOCK_HEIGHT+(Chunk.BLOCK_HEIGHT*0.5f);
+					for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ )
+					{
+						final int currentIndex = (x) + Chunk.BLOCKS_X * ( y ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z );
+						final byte blockType = blocks[ currentIndex ];
+						if ( Block.isNoAirBlock( blockType ) )
+						{
+							int sidesMask;
+							// TODO: Rendering translucent blocks needs fixing
+							// see http://stackoverflow.com/questions/3388294/opengl-question-about-the-usage-of-gldepthmask/3390094#3390094
+							// and http://www.opengl.org/wiki/Transparency_Sorting
+							// need to use separate VBOs for translucent blocks and render them
+							// back-to-front with depth buffer disabled
+							if ( x != 0 && blockType == Block.Type.WATER )
+							{
+								if ( y == Chunk.BLOCKS_Y-1 || Block.isAirBlock( blocks[ (x) + Chunk.BLOCKS_X * ( y+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z ) ] ) ) {
+									sidesMask = BlockRenderer.SIDE_TOP;
+								} else {
+									sidesMask = 0;
+								}
+							} else {
+								sidesMask = determineSidesToRender( chunk , x , y, z );
 							}
-						} 
+							if ( sidesMask  != 0 )
+							{
+								float blockCenterZ = zOrig + z * Chunk.BLOCK_DEPTH+(Chunk.BLOCK_DEPTH*0.5f);
+
+								if ( DEBUG_PERFORMANCE ) {
+									quadCount += Integer.bitCount( sidesMask );
+								}
+								final float lightLevel = chunk.lightLevel[ currentIndex ];
+								final float lightFactor = 0.3f + lightLevel*(0.7f/(Block.MAX_LIGHT_LEVEL+1));
+								// final float lightFactor = 0.7f;
+								renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f ,lightFactor, blockType , sidesMask );
+								if ( DEBUG_PERFORMANCE ) {
+									notCulled++;
+								}
+							}
+						}
 					}
-				}				
-			}			
+				}
+			}
 		}
-		
+
 		renderer.end();
-		
-		chunk.setMeshRebuildRequired( false );		
+
+		chunk.setMeshRebuildRequired( false );
 		chunk.renderedBlockCount = notCulled;
-		
-		if ( DEBUG_PERFORMANCE && (frame%60)==0) 
+
+		if ( DEBUG_PERFORMANCE && (frame%60)==0)
 		{
 			System.out.println("Triangle count: "+quadCount*2);
 		}
 		return notCulled;
 	}
 
-	private int determineSidesToRender(Chunk chunk,int blockX,int blockY,int blockZ) 
+	private int determineSidesToRender(Chunk chunk,int blockX,int blockY,int blockZ)
 	{
 		final byte[] blocks = chunk.blockType;
 
 		int sideMask = 0;
 
 		// check along X axis
-		if ( blockX == 0 ) 
-		{ 
+		if ( blockX == 0 )
+		{
 			// check adjacent chunk left of this one
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x-1 ,  chunk.y ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (Chunk.BLOCKS_X-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (Chunk.BLOCKS_X-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask = BlockRenderer.SIDE_LEFT;
 			}
-		} 
-		else if ( Block.isTranslucentBlock( blocks[ (blockX-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+		}
+		else if ( Block.isTranslucentBlock( blocks[ (blockX-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 		{
-			sideMask = BlockRenderer.SIDE_LEFT;			
+			sideMask = BlockRenderer.SIDE_LEFT;
 		}
 
 		if ( blockX == Chunk.BLOCKS_X-1 ) { // check adjacent chunk right of this one
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x+1 ,  chunk.y ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (0) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (0) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_RIGHT;
 			}
-		} 
-		else if ( Block.isTranslucentBlock( blocks[ (blockX+1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+		}
+		else if ( Block.isTranslucentBlock( blocks[ (blockX+1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 		{
 			sideMask |= BlockRenderer.SIDE_RIGHT;
-		}		
+		}
 
 		// check along Y axis
-		if ( blockY == 0 ) { 
+		if ( blockY == 0 ) {
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y+1 ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( 0 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( 0 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_BOTTOM;
-			}			
-		} 
-		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+			}
+		}
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 		{
 			sideMask |= BlockRenderer.SIDE_BOTTOM;
-		}	
+		}
 
-		if ( blockY == Chunk.BLOCKS_Y-1 ) 
+		if ( blockY == Chunk.BLOCKS_Y-1 )
 		{
 			// check adjacent chunk
 			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y-1 ,  chunk.z );
-			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( Chunk.BLOCKS_Y-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( Chunk.BLOCKS_Y-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_TOP;
-			}				
-		} 
-		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) ) 
+			}
+		}
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY+1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 		{
 			sideMask |= BlockRenderer.SIDE_TOP;
-		}		
+		}
 
 		// check along Z axis
 		if ( blockZ == 0 ) { // check adjacent chunk
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z-1 );	
-			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( Chunk.BLOCKS_Z-1 ) ] ) )  
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z-1 );
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( Chunk.BLOCKS_Z-1 ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_BACK;
 			}
-		} 
-		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ-1 ) ] ) ) 
+		}
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ-1 ) ] ) )
 		{
 			sideMask |= BlockRenderer.SIDE_BACK;
-		}	
+		}
 
 		if ( blockZ == Chunk.BLOCKS_Z-1 ) { // check adjacent chunk
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z+1 );	
-			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( 0 ) ] ) ) 
+			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z+1 );
+			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( 0 ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_FRONT;
 			}
-		} 
-		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ+1 ) ] ) ) 
+		}
+		else if ( Block.isTranslucentBlock( blocks[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ+1 ) ] ) )
 		{
 			sideMask |= BlockRenderer.SIDE_FRONT;
-		}		
+		}
 		return sideMask;
-	}	
+	}
 }

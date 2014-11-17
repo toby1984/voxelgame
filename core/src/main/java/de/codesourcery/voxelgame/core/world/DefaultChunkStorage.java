@@ -15,7 +15,7 @@ public class DefaultChunkStorage implements IChunkStorage
 	private final ChunkFactory chunkFactory;
 	private final String chunkDirectory;
 
-	public DefaultChunkStorage(File chunkDirectory, ChunkFactory chunkFactory) throws IOException 
+	public DefaultChunkStorage(File chunkDirectory, ChunkFactory chunkFactory) throws IOException
 	{
 		if ( ! chunkDirectory.exists() ) {
 			if ( ! chunkDirectory.mkdirs() ) {
@@ -34,30 +34,30 @@ public class DefaultChunkStorage implements IChunkStorage
 		}
 
 		Chunk result = null;
-		if ( Constants.USE_PERSISTENT_STORAGE ) 
+		if ( Constants.USE_PERSISTENT_STORAGE )
 		{
 			try {
 				result = tryLoadFromDisk(chunkX, chunkY, chunkZ);
-			} 
+			}
 			catch(IOException e) {
 				e.printStackTrace();
 			}
 		}
 		if ( result == null ) {
 			result = chunkFactory.createChunk(chunkX, chunkY,chunkZ);
-			if ( Constants.USE_PERSISTENT_STORAGE ) 
+			if ( Constants.USE_PERSISTENT_STORAGE )
 			{
 				try {
 					writeToDisk( result );
 				} catch(IOException e) {
 					e.printStackTrace();
-				}				
+				}
 			}
 		}
 		return result;
 	}
 
-	private Chunk tryLoadFromDisk(int chunkX, int chunkY,int chunkZ) throws IOException 
+	private Chunk tryLoadFromDisk(int chunkX, int chunkY,int chunkZ) throws IOException
 	{
 		final File f = createPath(chunkX,chunkY,chunkZ);
 		if ( ! f.exists() ) {
@@ -68,11 +68,11 @@ public class DefaultChunkStorage implements IChunkStorage
 		return result;
 	}
 
-	private void writeToDisk(Chunk chunk) throws IOException 
+	private void writeToDisk(Chunk chunk) throws IOException
 	{
 		final File f = createPath(chunk.x,chunk.y,chunk.z);
 		final BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(f));
-		
+
 		try {
 			out.write( chunk.blockType , 0 , chunk.blockType.length );
 		} finally {
@@ -80,11 +80,11 @@ public class DefaultChunkStorage implements IChunkStorage
 		}
 	}
 
-	private void populateFromDisk(Chunk chunk) throws IOException 
+	private void populateFromDisk(Chunk chunk) throws IOException
 	{
 		final File f = createPath(chunk.x,chunk.y,chunk.z);
 		final BufferedInputStream out = new BufferedInputStream(new FileInputStream(f));
-		try 
+		try
 		{
 			int read = out.read( chunk.blockType , 0 , chunk.blockType.length );
 			if ( read != chunk.blockType.length ) {
@@ -93,17 +93,17 @@ public class DefaultChunkStorage implements IChunkStorage
 		} finally {
 			out.close();
 		}
-	}    
+	}
 
-	private File createPath(int chunkX, int chunkY,int chunkZ) 
+	private File createPath(int chunkX, int chunkY,int chunkZ)
 	{
 		return new File( chunkDirectory+"/chunk_"+chunkX+"_"+chunkY+"_"+chunkZ+".chunk" );
 	}
-	
+
 	@Override
-	public void saveChunk(Chunk chunk) throws IOException 
+	public void saveChunk(Chunk chunk) throws IOException
 	{
-		if ( Constants.USE_PERSISTENT_STORAGE && chunk.hasChangedSinceLoad() ) 
+		if ( Constants.USE_PERSISTENT_STORAGE && chunk.hasChangedSinceLoad() )
 		{
 			writeToDisk( chunk );
 			chunk.setChangedSinceLoad(false);

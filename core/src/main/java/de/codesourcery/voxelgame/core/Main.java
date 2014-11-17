@@ -37,7 +37,7 @@ import de.codesourcery.voxelgame.core.world.TickListenerContainer;
 public class Main implements ApplicationListener {
 
 	private long benchmarkStartTime;
-	
+
 	private long frameCounter=0;
 
 	private int previousFPS;
@@ -45,7 +45,7 @@ public class Main implements ApplicationListener {
 	private long fpsSum = 0;
 	private int minFPS=Integer.MAX_VALUE;
 	private int maxFPS=Integer.MIN_VALUE;
-	
+
 	// end: debugging
 
 	private PerspectiveCamera camera;
@@ -60,18 +60,22 @@ public class Main implements ApplicationListener {
 	private ShaderProgram meshShader;
 
 	private Texture blockTextures;
-	
+
 	private final Hit targetedBlock = new Hit();
 	private boolean nonAirBlockSelected = false;
 
 	private final TickListenerContainer tickListeners = new TickListenerContainer();
-	
+
 	private void setupTextures()
 	{
 		crosshair = new Texture(Gdx.files.internal("crosshair.png"));
 
 		// setup texture atlas with block textures
-		blockTextures = new Texture(Gdx.files.internal("texture_atlas.png"),false);
+		if ( BlockRenderer.DEBUG_RENDER_WIREFRAME ) {
+			blockTextures = new Texture(Gdx.files.internal("texture_atlas_wireframe.png"),false);
+		} else {
+			blockTextures = new Texture(Gdx.files.internal("texture_atlas.png"),false);
+		}
 		if ( blockTextures.getWidth() != blockTextures.getHeight() ) {
 			throw new RuntimeException("Internal error, texture atlas is not rectangular ?");
 		}
@@ -83,7 +87,7 @@ public class Main implements ApplicationListener {
 	}
 
 	@Override
-	public void create () 
+	public void create ()
 	{
 		setupTextures();
 
@@ -103,16 +107,16 @@ public class Main implements ApplicationListener {
 		try {
 			chunkStorage = new DefaultChunkStorage( Constants.CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) );
 		}
-		catch (IOException e) 
+		catch (IOException e)
 		{
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
-		
+
 		chunkManager = new ChunkManager(camera,chunkStorage);
 
 		meshShader = ChunkRenderer.loadShader( "/coloredmesh_vertex.glsl" , "/coloredmesh_fragment.glsl" );
-		
+
 		shapeRenderer = new ShapeRenderer();
 
 		spriteBatch = new SpriteBatch();
@@ -127,9 +131,9 @@ public class Main implements ApplicationListener {
 			private final float PLAYER_DEPTH = 3;
 
 			@Override
-			public void onLeftClick() 
+			public void onLeftClick()
 			{
-//				if ( nonAirBlockSelected ) 
+//				if ( nonAirBlockSelected )
 //				{
 //					targetedBlock.chunk.setBlockType( targetedBlock.blockX , targetedBlock.blockY , targetedBlock.blockZ , chunkManager , Block.Type.AIR );
 //				}
@@ -137,9 +141,9 @@ public class Main implements ApplicationListener {
 			}
 
 			@Override
-			public void onRightClick() 
+			public void onRightClick()
 			{
-				if ( nonAirBlockSelected ) 
+				if ( nonAirBlockSelected )
 				{
 					// determine which side of the block the user clicked
 					final BoundingBox bb = new BoundingBox();
@@ -168,7 +172,7 @@ public class Main implements ApplicationListener {
 							blockY = Chunk.BLOCKS_Y-1;
 						} else {
 							blockY--;
-						}						
+						}
 					} else if ( equals( bb.min.z , targetedBlock.hitPointOnBlock.z ) ) {
 						// back
 						gotSurface = true;
@@ -177,7 +181,7 @@ public class Main implements ApplicationListener {
 							blockZ = Chunk.BLOCKS_Z-1;
 						} else {
 							blockZ--;
-						}							
+						}
 					} else if ( equals( bb.max.x , targetedBlock.hitPointOnBlock.x ) ) {
 						// right
 						gotSurface = true;
@@ -186,7 +190,7 @@ public class Main implements ApplicationListener {
 							blockX = 0;
 						} else {
 							blockX++;
-						}						
+						}
 					} else if ( equals( bb.max.y , targetedBlock.hitPointOnBlock.y ) ) {
 						// top
 						gotSurface = true;
@@ -195,7 +199,7 @@ public class Main implements ApplicationListener {
 							blockY = 0;
 						} else {
 							blockY++;
-						}							
+						}
 					} else if ( equals( bb.max.z , targetedBlock.hitPointOnBlock.z ) ) {
 						// front
 						gotSurface = true;
@@ -204,10 +208,10 @@ public class Main implements ApplicationListener {
 							blockZ = 0;
 						} else {
 							blockZ++;
-						}							
-					} 
+						}
+					}
 
-					if ( gotSurface ) 
+					if ( gotSurface )
 					{
 						// only change block if it doesn't contain the camera position
 						Block.populateBoundingBox( chunk , blockX , blockY , blockZ , bb );
@@ -217,17 +221,17 @@ public class Main implements ApplicationListener {
 					} else {
 						System.err.println("Failed to determine surface for hit point "+targetedBlock.hitPointOnBlock+" and BB "+bb);
 					}
-				}				
+				}
 			}
 
-			private final boolean equals(double actual,double expected) 
+			private final boolean equals(double actual,double expected)
 			{
 				final float EPSILON = 0.01f;
 				return Math.abs( actual - expected ) <= EPSILON;
 			}
 
 			@Override
-			public boolean canTranslateCamera(Camera cam, Vector3 posDelta) 
+			public boolean canTranslateCamera(Camera cam, Vector3 posDelta)
 			{
 				if ( ! Constants.RESTRICT_CAMERA_TO_AIR_BLOCKS ) {
 					return true;
@@ -236,7 +240,7 @@ public class Main implements ApplicationListener {
 				tmp.set( cam.position ).add( posDelta );
 
 				bb.min.set( tmp.x-PLAYER_WIDTH/2.0f , tmp.y - PLAYER_HEIGHT/2.0f , tmp.z - PLAYER_DEPTH/2.0f );
-				bb.max.set( tmp.x+PLAYER_WIDTH/2.0f , tmp.y + PLAYER_HEIGHT/2.0f , tmp.z + PLAYER_DEPTH/2.0f );				
+				bb.max.set( tmp.x+PLAYER_WIDTH/2.0f , tmp.y + PLAYER_HEIGHT/2.0f , tmp.z + PLAYER_DEPTH/2.0f );
 				bb.set(bb.min,bb.max);
 
 				if ( chunkManager.intersectsNonEmptyBlock( bb ) )
@@ -249,27 +253,27 @@ public class Main implements ApplicationListener {
 
 			@Override
 			public void cameraRotated(Camera camera) {
-				chunkManager.cameraMoved();				
+				chunkManager.cameraMoved();
 			}
 
 			@Override
 			public void cameraTranslated(Camera camera) {
 				chunkManager.cameraMoved();
 			}
-		}; 
+		};
 
-		chunkRenderer = new ChunkRenderer(chunkManager,camController);    
+		chunkRenderer = new ChunkRenderer(chunkManager,camController);
 		chunkManager.setChunkRenderer( chunkRenderer ); // TODO: Circular dependency ChunkManager <-> ChunkRenderer ... not that nice...
 		chunkManager.cameraMoved();
-		Gdx.input.setInputProcessor(camController);	
+		Gdx.input.setInputProcessor(camController);
 	}
-	
+
 	@Override
-	public void render() 
-	{		
-		if ( Constants.BENCHMARK_MODE ) 
-		{ 
-			if ( benchmarkStartTime == 0 ) 
+	public void render()
+	{
+		if ( Constants.BENCHMARK_MODE )
+		{
+			if ( benchmarkStartTime == 0 )
 			{
 				benchmarkStartTime = System.currentTimeMillis();
 				Gdx.app.postRunnable( new Runnable() {
@@ -279,17 +283,17 @@ public class Main implements ApplicationListener {
 						Gdx.input.getInputProcessor().keyDown( Keys.W );
 					}
 				} );
-			} 
-			else 
+			}
+			else
 			{
 				long now = System.currentTimeMillis();
 				final float durationSeconds = ( now - benchmarkStartTime ) / 1000.0f;
-				if ( durationSeconds >= Constants.BENCHMARK_DURATION_SECONDS ) 
+				if ( durationSeconds >= Constants.BENCHMARK_DURATION_SECONDS )
 				{
-					final float avgFpsJitter = fpsJitterSum / (float) frameCounter; 
+					final float avgFpsJitter = fpsJitterSum / (float) frameCounter;
 					final float avgFps = fpsSum/(float) frameCounter;
 					final float avgFps2 = frameCounter / durationSeconds;
-					
+
 					System.out.println("Benchmark finished after "+durationSeconds+" seconds ("+frameCounter+" frames");
 					System.out.println("Frame count: "+frameCounter);
 					System.out.println("min FPS    : "+minFPS);
@@ -301,7 +305,7 @@ public class Main implements ApplicationListener {
 			}
 		}
 
-		try 
+		try
 		{
 			doRender();
 		} catch(RuntimeException e) {
@@ -310,11 +314,11 @@ public class Main implements ApplicationListener {
 		}
 	}
 
-	public void doRender () 
+	public void doRender ()
 	{
 		final int currentFPS = Gdx.graphics.getFramesPerSecond();
-		
-		if ( frameCounter > 0 ) 
+
+		if ( frameCounter > 0 )
 		{
 			this.fpsJitterSum += Math.abs( previousFPS - currentFPS );
 		}
@@ -325,7 +329,7 @@ public class Main implements ApplicationListener {
 		Gdx.gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
 
 		camController.update();
-		
+
 		// render sky
  	     skyBox.render(camera);
 
@@ -334,24 +338,24 @@ public class Main implements ApplicationListener {
 
 		// render blocks
 		chunkRenderer.render();
-		
+
 		// invoke tick listeners
-		tickListeners.tick( camController );		
-		
+		tickListeners.tick( camController );
+
 		// render outline of targeted block
 
 		// get pick-ray through center of screen
 		final Ray r = camera.getPickRay(Gdx.graphics.getWidth()/2.0f,Gdx.graphics.getHeight()/2.0f);
-		if ( chunkManager.getClosestIntersection( r , targetedBlock ) ) 
+		if ( chunkManager.getClosestIntersection( r , targetedBlock ) )
 		{
 			nonAirBlockSelected = true;
 			final Chunk chunk = targetedBlock.chunk;
 			final float xOrig = chunk.boundingBox.min.x;
 			final float yOrig = chunk.boundingBox.min.y;
-			final float zOrig = chunk.boundingBox.min.z;        	
+			final float zOrig = chunk.boundingBox.min.z;
 
 			float bottomLeftX = xOrig + targetedBlock.blockX * Chunk.BLOCK_WIDTH; // +(Chunk.BLOCK_WIDTH*0.5f);
-			float bottomLeftY = yOrig + targetedBlock.blockY * Chunk.BLOCK_HEIGHT; // +(Chunk.BLOCK_HEIGHT*0.5f);		
+			float bottomLeftY = yOrig + targetedBlock.blockY * Chunk.BLOCK_HEIGHT; // +(Chunk.BLOCK_HEIGHT*0.5f);
 			float bottomLeftZ = zOrig + targetedBlock.blockZ * Chunk.BLOCK_DEPTH +(Chunk.BLOCK_DEPTH*1);
 
 			shapeRenderer.setTransformMatrix(new Matrix4().idt() );
@@ -377,25 +381,25 @@ public class Main implements ApplicationListener {
 
 		fpsSum += currentFPS;
 
-		if ( frameCounter > 120 ) { // delay determining min/max for 120 frames to account for JVM warm-up etc. 
+		if ( frameCounter > 120 ) { // delay determining min/max for 120 frames to account for JVM warm-up etc.
 			minFPS = Math.min(minFPS,currentFPS);
 			maxFPS = Math.max(maxFPS,currentFPS);
 			float avgFPS = fpsSum / frameCounter;
 			font.draw(spriteBatch, "FPS min/avg/max: "+minFPS+" / "+avgFPS+" / "+maxFPS, 10, y);
-			y -= fontHeight;        	
+			y -= fontHeight;
 		}
 		font.draw(spriteBatch, "Chunk : "+chunkManager.cameraChunkX+" / "+chunkManager.cameraChunkY+" / "+chunkManager.cameraChunkZ, 10, y);
 		y -= fontHeight;
-		font.draw(spriteBatch, "Camera pos: "+camera.position, 10, y );      
+		font.draw(spriteBatch, "Camera pos: "+camera.position, 10, y );
 		spriteBatch.end();
 	}
 
 	@Override
-	public void dispose () 
+	public void dispose ()
 	{
 		chunkRenderer.dispose();
 		chunkManager.dispose();
-		
+
 		crosshair.dispose();
 		blockTextures.dispose();
 		font.dispose();
@@ -403,12 +407,12 @@ public class Main implements ApplicationListener {
 
 		spriteBatch.dispose();
 		shapeRenderer.dispose();
-		
+
 		meshShader.dispose();
 	}
 
 	@Override
-	public void resize(int width, int height) 
+	public void resize(int width, int height)
 	{
 		camera.viewportHeight=height;
 		camera.viewportWidth=width;
@@ -427,5 +431,5 @@ public class Main implements ApplicationListener {
 	@Override
 	public void resume() {
 		// TODO Auto-generated method stub
-	}	
+	}
 }
