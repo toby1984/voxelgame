@@ -6,7 +6,11 @@ public interface IChunkRenderer {
 
 	public void render();
 
+	public void setWireframe(boolean showWireframe);
+
+	public boolean isWireframe();
+
 	public int setupMesh(Chunk chunk);
-	
+
 	public void dispose();
 }

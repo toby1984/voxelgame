@@ -20,22 +20,22 @@ import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
 public final class Chunk implements Poolable
 {
 	// number of blocks along X axis
-	public static final int BLOCKS_X = 16;
+	public static final int BLOCKS_X = 32;
 
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 256;
+	public static final int BLOCKS_Y = 64;
 
 	// number of blocks along Z axis
-	public static final int BLOCKS_Z = 16;
+	public static final int BLOCKS_Z = 32;
 
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 44f;
+	public static final float BLOCK_WIDTH = 110f;
 
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 44f;
+	public static final float BLOCK_HEIGHT = 110f;
 
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 44f;
+	public static final float BLOCK_DEPTH = 110f;
 
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)
@@ -250,39 +250,39 @@ public final class Chunk implements Poolable
 		// so that any block faces that might've been hidden and are now
 		// visible are rendered correctly
 		if ( blockX == 0 ) {
-			Chunk adj = maybeGetLeftNeighbour( chunkManager );
+			final Chunk adj = maybeGetLeftNeighbour( chunkManager );
 			if ( adj != null ) {
 				adj.setMeshRebuildRequired(true);
 				System.out.println( "Invalidating left: "+adj);
 			}
 		} else if ( blockX == Chunk.BLOCKS_X-1 ) {
-			Chunk adj = maybeGetRightNeighbour( chunkManager );
+			final Chunk adj = maybeGetRightNeighbour( chunkManager );
 			if ( adj != null ) {
 				adj.setMeshRebuildRequired(true);
 				System.out.println( "Invalidating right: "+adj);
 			}
 		}
 		if ( blockY == 0 ) {
-			Chunk adj = maybeGetBottomNeighbour( chunkManager );
+			final Chunk adj = maybeGetBottomNeighbour( chunkManager );
 			if ( adj != null ) {
 				adj.setMeshRebuildRequired(true);
 				System.out.println( "Invalidating bottom: "+adj);
 			}
 		} else if ( blockY == BLOCKS_Y-1 ) {
-			Chunk adj = maybeGetTopNeighbour( chunkManager );
+			final Chunk adj = maybeGetTopNeighbour( chunkManager );
 			if ( adj != null ) {
 				adj.setMeshRebuildRequired(true);
 				System.out.println( "Invalidating top: "+adj);
 			}
 		}
 		if ( blockZ == 0 ) {
-			Chunk adj = maybeGetFrontNeighbour( chunkManager );
+			final Chunk adj = maybeGetFrontNeighbour( chunkManager );
 			if ( adj != null ) {
 				adj.setMeshRebuildRequired(true);
 				System.out.println( "Invalidating front: "+adj);
 			}
 		} else if ( blockY == BLOCKS_Z-1 ) {
-			Chunk adj = maybeGetBackNeighbour( chunkManager );
+			final Chunk adj = maybeGetBackNeighbour( chunkManager );
 			if ( adj != null ) {
 				adj.setMeshRebuildRequired(true);
 				System.out.println( "Invalidating back: "+adj);
@@ -379,7 +379,7 @@ public final class Chunk implements Poolable
 
 					if ( Intersector.intersectRayBounds(ray, TMP_BB,hitPointOnBlock) )
 					{
-						float distance = hitPointOnBlock.dst2( ray.origin );
+						final float distance = hitPointOnBlock.dst2( ray.origin );
 						if ( ! hit || distance < distanceToHitSquared )
 						{
 							hit = true;
@@ -401,7 +401,7 @@ public final class Chunk implements Poolable
 
 	public void printBoundingBoxes() {
 
-		BoundingBox bb = new BoundingBox();
+		final BoundingBox bb = new BoundingBox();
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ )
 		{
 			for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ )
@@ -421,9 +421,9 @@ public final class Chunk implements Poolable
 		final float yOrig = boundingBox.min.y;
 		final float zOrig = boundingBox.min.z;
 
-		float x1 = xOrig + blockX * BLOCK_WIDTH;
-		float y1 = yOrig + blockY * BLOCK_HEIGHT;
-		float z1 = zOrig + blockZ * BLOCK_DEPTH;
+		final float x1 = xOrig + blockX * BLOCK_WIDTH;
+		final float y1 = yOrig + blockY * BLOCK_HEIGHT;
+		final float z1 = zOrig + blockZ * BLOCK_DEPTH;
 
 		box.min.set(x1,y1,z1);
 		box.max.set(x1+BLOCK_WIDTH,y1+BLOCK_HEIGHT,z1+BLOCK_DEPTH);

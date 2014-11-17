@@ -1,3 +1,4 @@
+#version 330
 uniform sampler2D color_texture;
     
 smooth in vec2 vTexCoord;
@@ -6,6 +7,7 @@ void main()
 {
    // read color
    vec4 v_color = texture2D(color_texture, vTexCoord );
+   v_color.rgb=vec3(0,1,0);
              
    // per-pixel "fog" (actually modifies alpha-channel only)
    const float zFar = 5000;

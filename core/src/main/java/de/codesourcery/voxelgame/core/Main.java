@@ -71,11 +71,8 @@ public class Main implements ApplicationListener {
 		crosshair = new Texture(Gdx.files.internal("crosshair.png"));
 
 		// setup texture atlas with block textures
-		if ( BlockRenderer.DEBUG_RENDER_WIREFRAME ) {
-			blockTextures = new Texture(Gdx.files.internal("texture_atlas_wireframe.png"),false);
-		} else {
-			blockTextures = new Texture(Gdx.files.internal("texture_atlas.png"),false);
-		}
+		blockTextures = new Texture(Gdx.files.internal("texture_atlas.png"),false);
+
 		if ( blockTextures.getWidth() != blockTextures.getHeight() ) {
 			throw new RuntimeException("Internal error, texture atlas is not rectangular ?");
 		}
@@ -107,7 +104,7 @@ public class Main implements ApplicationListener {
 		try {
 			chunkStorage = new DefaultChunkStorage( Constants.CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) );
 		}
-		catch (IOException e)
+		catch (final IOException e)
 		{
 			e.printStackTrace();
 			throw new RuntimeException(e);
@@ -138,6 +135,12 @@ public class Main implements ApplicationListener {
 //					targetedBlock.chunk.setBlockType( targetedBlock.blockX , targetedBlock.blockY , targetedBlock.blockZ , chunkManager , Block.Type.AIR );
 //				}
 				tickListeners.add( new Bullet( meshShader , camController.camera.position , camController.camera.direction ) );
+			}
+
+			@Override
+			public void toggleWireframe() {
+				chunkRenderer.setWireframe( ! chunkRenderer.isWireframe() );
+				chunkManager.rebuildAllChunks();
 			}
 
 			@Override
@@ -286,7 +289,7 @@ public class Main implements ApplicationListener {
 			}
 			else
 			{
-				long now = System.currentTimeMillis();
+				final long now = System.currentTimeMillis();
 				final float durationSeconds = ( now - benchmarkStartTime ) / 1000.0f;
 				if ( durationSeconds >= Constants.BENCHMARK_DURATION_SECONDS )
 				{
@@ -308,7 +311,7 @@ public class Main implements ApplicationListener {
 		try
 		{
 			doRender();
-		} catch(RuntimeException e) {
+		} catch(final RuntimeException e) {
 			e.printStackTrace();
 			throw e;
 		}
@@ -349,21 +352,24 @@ public class Main implements ApplicationListener {
 		if ( chunkManager.getClosestIntersection( r , targetedBlock ) )
 		{
 			nonAirBlockSelected = true;
-			final Chunk chunk = targetedBlock.chunk;
-			final float xOrig = chunk.boundingBox.min.x;
-			final float yOrig = chunk.boundingBox.min.y;
-			final float zOrig = chunk.boundingBox.min.z;
+			if ( ! BlockRenderer.DEBUG_RENDER_WIREFRAME )
+			{
+				final Chunk chunk = targetedBlock.chunk;
+				final float xOrig = chunk.boundingBox.min.x;
+				final float yOrig = chunk.boundingBox.min.y;
+				final float zOrig = chunk.boundingBox.min.z;
 
-			float bottomLeftX = xOrig + targetedBlock.blockX * Chunk.BLOCK_WIDTH; // +(Chunk.BLOCK_WIDTH*0.5f);
-			float bottomLeftY = yOrig + targetedBlock.blockY * Chunk.BLOCK_HEIGHT; // +(Chunk.BLOCK_HEIGHT*0.5f);
-			float bottomLeftZ = zOrig + targetedBlock.blockZ * Chunk.BLOCK_DEPTH +(Chunk.BLOCK_DEPTH*1);
+				final float bottomLeftX = xOrig + targetedBlock.blockX * Chunk.BLOCK_WIDTH; // +(Chunk.BLOCK_WIDTH*0.5f);
+				final float bottomLeftY = yOrig + targetedBlock.blockY * Chunk.BLOCK_HEIGHT; // +(Chunk.BLOCK_HEIGHT*0.5f);
+				final float bottomLeftZ = zOrig + targetedBlock.blockZ * Chunk.BLOCK_DEPTH +(Chunk.BLOCK_DEPTH*1);
 
-			shapeRenderer.setTransformMatrix(new Matrix4().idt() );
-			shapeRenderer.setProjectionMatrix( camera.combined );
-			shapeRenderer.begin(ShapeType.Line);
-			shapeRenderer.setColor(Color.BLACK);
-			shapeRenderer.box( bottomLeftX,bottomLeftY,bottomLeftZ,Chunk.BLOCK_WIDTH,Chunk.BLOCK_HEIGHT,Chunk.BLOCK_DEPTH);
-			shapeRenderer.end();
+				shapeRenderer.setTransformMatrix(new Matrix4().idt() );
+				shapeRenderer.setProjectionMatrix( camera.combined );
+				shapeRenderer.begin(ShapeType.Line);
+				shapeRenderer.setColor(Color.BLACK);
+				shapeRenderer.box( bottomLeftX,bottomLeftY,bottomLeftZ,Chunk.BLOCK_WIDTH,Chunk.BLOCK_HEIGHT,Chunk.BLOCK_DEPTH);
+				shapeRenderer.end();
+			}
 		} else {
 			nonAirBlockSelected = false;
 		}
@@ -384,7 +390,7 @@ public class Main implements ApplicationListener {
 		if ( frameCounter > 120 ) { // delay determining min/max for 120 frames to account for JVM warm-up etc.
 			minFPS = Math.min(minFPS,currentFPS);
 			maxFPS = Math.max(maxFPS,currentFPS);
-			float avgFPS = fpsSum / frameCounter;
+			final float avgFPS = fpsSum / frameCounter;
 			font.draw(spriteBatch, "FPS min/avg/max: "+minFPS+" / "+avgFPS+" / "+maxFPS, 10, y);
 			y -= fontHeight;
 		}

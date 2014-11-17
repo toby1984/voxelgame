@@ -1,4 +1,5 @@
 #version 330
+#line 1
 
 // per-vertex attributes
 in vec4 a_position;
@@ -28,13 +29,11 @@ void main()
    
    // transform vertex to eye coordinates
    vec4 eyeVertex = u_modelView * a_position;
-   vec3 eyeVertexNormalized = eyeVertex.xyz / eyeVertex.w;
-   
-   // const vec3 lightPos = vec3(eyeVertexNormalized.x,-10000,eyeVertexNormalized.z);
-   const vec3 lightPos = u_cameraRotation * vec3(0,10000,0);
+   vec3 eyeVertexNormalized = eyeVertex.xyz / eyeVertex.w;     
+   vec3 lightPos = u_cameraRotation * vec3(0,10000,0);
       
    // normal vector to light source
-   v_lightDir = normalize(lightPos - eyeVertex);
+   v_lightDir = normalize(lightPos - eyeVertex.xyz);
    
    gl_Position =  u_modelViewProjection * a_position;
    vTexCoord = a_texCoord;

@@ -31,7 +31,7 @@ public final class BlockRenderer implements Disposable {
 	private static final boolean CULL_FACES = true;
 	private static final boolean DEPTH_BUFFER = true;
 
-	public static boolean DEBUG_RENDER_WIREFRAME = false;
+	public static volatile boolean DEBUG_RENDER_WIREFRAME = true;
 
 	/*
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position
@@ -147,38 +147,38 @@ public final class BlockRenderer implements Disposable {
 		 *
 		 *  FRONT BACK LEFT RIGHT TOP BOTTOM
 		 */
-		float textureSpacingWidth=textureSpacing/(float) textureSize;  // width of a single block texture in texture coordinates (including spacing
-		float textureSpacingHeight=textureSpacing/(float) textureSize; // height of a single block texture in texture coordinates
+		final float textureSpacingWidth=textureSpacing/(float) textureSize;  // width of a single block texture in texture coordinates (including spacing
+		final float textureSpacingHeight=textureSpacing/(float) textureSize; // height of a single block texture in texture coordinates
 
-		float xOrigin = textureSpacingWidth; // X coordinate of top-left corner of front face texture for block type 0
-		float yOrigin = textureSpacingHeight; // X coordinate of top-left corner of front face texture for block type 0
+		final float xOrigin = textureSpacingWidth; // X coordinate of top-left corner of front face texture for block type 0
+		final float yOrigin = textureSpacingHeight; // X coordinate of top-left corner of front face texture for block type 0
 
-		float innerTextureWidth=faceSize/(float) textureSize;  // width of a single block texture in texture coordinates
-		float innerTextureHeight=faceSize/(float) textureSize; // height of a single block texture in texture coordinates
+		final float innerTextureWidth=faceSize/(float) textureSize;  // width of a single block texture in texture coordinates
+		final float innerTextureHeight=faceSize/(float) textureSize; // height of a single block texture in texture coordinates
 
-		float[][] result = new float[ (Block.Type.MAX+1) ][];
+		final float[][] result = new float[ (Block.Type.MAX+1) ][];
 		for ( byte type = 0 ; type <= Block.Type.MAX ; type++)
 		{
-			float[] tmp = new float[6*4*2 ]; // 6 faces * 4 VerticesPerQuad * 2 UV-coordinates floats
+			final float[] tmp = new float[6*4*2 ]; // 6 faces * 4 VerticesPerQuad * 2 UV-coordinates floats
 			result[type] = tmp;
 			int ptr = 0;
 			for ( int face = 0 ; face < 6 ; face++ )
 			{
 				// top-left corner of quad texture
-				float topLeftX = xOrigin + face*innerTextureWidth + face*textureSpacingWidth;
-				float topLeftY = yOrigin + type*innerTextureHeight + type*textureSpacingHeight;
+				final float topLeftX = xOrigin + face*innerTextureWidth + face*textureSpacingWidth;
+				final float topLeftY = yOrigin + type*innerTextureHeight + type*textureSpacingHeight;
 
 				// bottom-left corner of quad texture
-				float bottomLeftX = topLeftX;
-				float bottomLeftY = topLeftY + innerTextureHeight;
+				final float bottomLeftX = topLeftX;
+				final float bottomLeftY = topLeftY + innerTextureHeight;
 
 				// bottom-right corner of quad texture
-				float bottomRightX = topLeftX+innerTextureWidth;
-				float bottomRightY = topLeftY + innerTextureHeight;
+				final float bottomRightX = topLeftX+innerTextureWidth;
+				final float bottomRightY = topLeftY + innerTextureHeight;
 
 				// bottom-right corner of quad texture
-				float topRightX = topLeftX+innerTextureWidth;
-				float topRightY = topLeftY;
+				final float topRightX = topLeftX+innerTextureWidth;
+				final float topRightY = topLeftY;
 
 				// store UV-coordinates of each quad corner,
 				// order MUST be TOP_LEFT,TOP_RIGHT,BOTTOM_RIGHT,BOTTOM_LEFT so it matches with code in BlockRenderer#addBlock() !!!
@@ -555,7 +555,7 @@ public final class BlockRenderer implements Disposable {
 		int indicesRemaining = indexCount;
 		while ( indicesRemaining > 0 )
 		{
-			int indicesToDraw = indicesRemaining > 65535 ? 65535 : indicesRemaining;
+			final int indicesToDraw = indicesRemaining > 65535 ? 65535 : indicesRemaining;
 			if ( DEBUG_RENDER_WIREFRAME )
 			{
 				Gdx.graphics.getGL20().glDrawElements(GL20.GL_LINES , indicesToDraw , GL20.GL_UNSIGNED_SHORT , 0);

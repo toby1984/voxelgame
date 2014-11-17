@@ -1,3 +1,5 @@
+#version 330
+#line 1
 
 uniform sampler2D color_texture;
  	

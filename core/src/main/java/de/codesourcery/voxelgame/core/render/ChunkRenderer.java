@@ -23,7 +23,9 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 	private long frame = 0;
 
-	private final ShaderProgram shader;
+	private final ShaderProgram regularShader;
+	private final ShaderProgram wireframeShader;
+
 	private final ChunkManager chunkManager;
 	private final FPSCameraController cameraController;
 
@@ -31,30 +33,33 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	{
 		this.chunkManager = chunkManager;
 		this.cameraController = cameraController;
-		this.shader = loadShader();
+		this.regularShader = loadRegularShader();
+		this.wireframeShader = loadWireframeShader();
 	}
 
-	private static ShaderProgram loadShader()
+	private static ShaderProgram loadRegularShader()
 	{
-		if ( BlockRenderer.DEBUG_RENDER_WIREFRAME ) {
-			return loadShader("/wireframe_vertex.glsl","/wireframe_fragment.glsl");
-		}
 		return loadShader("/flat_vertex.glsl","/flat_fragment.glsl");
+	}
+
+	private static ShaderProgram loadWireframeShader()
+	{
+		return loadShader("/wireframe_vertex.glsl","/wireframe_fragment.glsl");
 	}
 
 	public static ShaderProgram loadShader(String vertexClassPath,String fragmentClassPath)
 	{
 		try {
-			String vertex = readShaderFromClasspath( vertexClassPath );
-			String fragment = readShaderFromClasspath( fragmentClassPath );
-			ShaderProgram result = new ShaderProgram(vertex,fragment);
+			final String vertex = readShaderFromClasspath( vertexClassPath );
+			final String fragment = readShaderFromClasspath( fragmentClassPath );
+			final ShaderProgram result = new ShaderProgram(vertex,fragment);
 			if ( ! result.isCompiled() ) {
 
 				throw new RuntimeException("Failed to compile shaders: "+result.getLog());
 			}
 			return result;
 		}
-		catch (IOException e) {
+		catch (final IOException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
@@ -63,12 +68,12 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	private static String readShaderFromClasspath(String name) throws IOException {
 
 		System.out.println("LOADING SHADER: "+name);
-		InputStream stream = Main.class.getResourceAsStream( name );
+		final InputStream stream = Main.class.getResourceAsStream( name );
 		if ( stream == null ) {
 			throw new RuntimeException("Failed to load shader '"+name+"'");
 		}
-		StringBuilder result = new StringBuilder();
-		BufferedReader reader = new BufferedReader(new InputStreamReader(stream ) );
+		final StringBuilder result = new StringBuilder();
+		final BufferedReader reader = new BufferedReader(new InputStreamReader(stream ) );
 		String line;
 		try {
 			while ( (line = reader.readLine() ) != null ) {
@@ -123,12 +128,24 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		}
 	}
 
+	@Override
+	public boolean isWireframe() {
+		return BlockRenderer.DEBUG_RENDER_WIREFRAME;
+	}
+
+	@Override
+	public void setWireframe(boolean showWireframe) {
+		BlockRenderer.DEBUG_RENDER_WIREFRAME = showWireframe;
+	}
+
 	private void renderChunk(Chunk chunk)
 	{
 		final GL20 gl20 = Gdx.graphics.getGL20();
 
 		gl20.glEnable (GL20.GL_BLEND);
 	    gl20.glBlendFunc (GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+	    final ShaderProgram shader = BlockRenderer.DEBUG_RENDER_WIREFRAME ? wireframeShader : regularShader;
 
 		shader.begin();
 
@@ -150,7 +167,8 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	@Override
 	public void dispose()
 	{
-		shader.dispose();
+		wireframeShader.dispose();
+		regularShader.dispose();
 	}
 
 	/**
@@ -177,11 +195,11 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 			for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ )
 			{
-				float blockCenterX = xOrig + x * Chunk.BLOCK_WIDTH+(Chunk.BLOCK_WIDTH*0.5f);
+				final float blockCenterX = xOrig + x * Chunk.BLOCK_WIDTH+(Chunk.BLOCK_WIDTH*0.5f);
 
 				for ( int y = 0 ; y < Chunk.BLOCKS_Y ; y++ )
 				{
-					float blockCenterY = yOrig + y * Chunk.BLOCK_HEIGHT+(Chunk.BLOCK_HEIGHT*0.5f);
+					final float blockCenterY = yOrig + y * Chunk.BLOCK_HEIGHT+(Chunk.BLOCK_HEIGHT*0.5f);
 					for ( int z = 0 ; z < Chunk.BLOCKS_Z ; z++ )
 					{
 						final int currentIndex = (x) + Chunk.BLOCKS_X * ( y ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( z );
@@ -206,7 +224,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 							}
 							if ( sidesMask  != 0 )
 							{
-								float blockCenterZ = zOrig + z * Chunk.BLOCK_DEPTH+(Chunk.BLOCK_DEPTH*0.5f);
+								final float blockCenterZ = zOrig + z * Chunk.BLOCK_DEPTH+(Chunk.BLOCK_DEPTH*0.5f);
 
 								if ( DEBUG_PERFORMANCE ) {
 									quadCount += Integer.bitCount( sidesMask );
@@ -247,7 +265,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		if ( blockX == 0 )
 		{
 			// check adjacent chunk left of this one
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x-1 ,  chunk.y ,  chunk.z );
+			final Chunk adj = chunkManager.maybeGetChunk( chunk.x-1 ,  chunk.y ,  chunk.z );
 			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (Chunk.BLOCKS_X-1) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask = BlockRenderer.SIDE_LEFT;
@@ -259,7 +277,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		}
 
 		if ( blockX == Chunk.BLOCKS_X-1 ) { // check adjacent chunk right of this one
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x+1 ,  chunk.y ,  chunk.z );
+			final Chunk adj = chunkManager.maybeGetChunk( chunk.x+1 ,  chunk.y ,  chunk.z );
 			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (0) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_RIGHT;
@@ -272,7 +290,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 		// check along Y axis
 		if ( blockY == 0 ) {
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y+1 ,  chunk.z );
+			final Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y+1 ,  chunk.z );
 			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( 0 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_BOTTOM;
@@ -286,7 +304,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		if ( blockY == Chunk.BLOCKS_Y-1 )
 		{
 			// check adjacent chunk
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y-1 ,  chunk.z );
+			final Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y-1 ,  chunk.z );
 			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( Chunk.BLOCKS_Y-1 ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( blockZ ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_TOP;
@@ -299,7 +317,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 		// check along Z axis
 		if ( blockZ == 0 ) { // check adjacent chunk
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z-1 );
+			final Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z-1 );
 			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( Chunk.BLOCKS_Z-1 ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_BACK;
@@ -311,7 +329,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		}
 
 		if ( blockZ == Chunk.BLOCKS_Z-1 ) { // check adjacent chunk
-			Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z+1 );
+			final Chunk adj = chunkManager.maybeGetChunk( chunk.x ,  chunk.y ,  chunk.z+1 );
 			if ( adj == null || adj.isEmpty() || Block.isTranslucentBlock( adj.blockType[ (blockX) + Chunk.BLOCKS_X * ( blockY ) + (Chunk.BLOCKS_X*Chunk.BLOCKS_Y) * ( 0 ) ] ) )
 			{
 				sideMask |= BlockRenderer.SIDE_FRONT;
