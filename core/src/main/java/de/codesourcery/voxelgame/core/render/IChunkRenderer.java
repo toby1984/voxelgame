@@ -10,6 +10,11 @@ public interface IChunkRenderer {
 
 	public boolean isWireframe();
 
+	/**
+	 *
+	 * @param chunk
+	 * @return number of rendered blocks
+	 */
 	public int setupMesh(Chunk chunk);
 
 	public void dispose();

@@ -8,6 +8,8 @@ import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL10;
+import com.badlogic.gdx.graphics.GL11;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
@@ -28,10 +30,11 @@ import de.codesourcery.voxelgame.core.render.IChunkRenderer;
 import de.codesourcery.voxelgame.core.util.TextureAtlasUtil;
 import de.codesourcery.voxelgame.core.world.Bullet;
 import de.codesourcery.voxelgame.core.world.Chunk;
-import de.codesourcery.voxelgame.core.world.ChunkFactory;
 import de.codesourcery.voxelgame.core.world.ChunkManager;
 import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
 import de.codesourcery.voxelgame.core.world.DefaultChunkStorage;
+import de.codesourcery.voxelgame.core.world.IChunkFactory;
+import de.codesourcery.voxelgame.core.world.NoiseChunkFactory;
 import de.codesourcery.voxelgame.core.world.TickListenerContainer;
 
 public class Main implements ApplicationListener {
@@ -90,10 +93,13 @@ public class Main implements ApplicationListener {
 
 		final float y = (Chunk.BLOCKS_Y*Chunk.BLOCK_HEIGHT)*0.5f;
 		camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-		camera.position.set(0f, y, 0.0000000001f);
+		camera.position.set(-8586.468f,75.79557f,-10606.933f);
+		// camera.position.set(0f, y, 0.0000000001f);
 		camera.lookAt(0,y,-100);
 		camera.near = 1f;
-		camera.far = 15000f;
+
+		final float maxChunkSize = Math.max(Math.max(Chunk.CHUNK_WIDTH,Chunk.CHUNK_HEIGHT),Chunk.CHUNK_DEPTH);
+		camera.far = (ChunkManager.LOAD_SURROUNDING_CHUNKS+1)*maxChunkSize;
 		camera.update();
 
 		skyBox = new SkyBox();
@@ -102,7 +108,9 @@ public class Main implements ApplicationListener {
 
 		final DefaultChunkStorage chunkStorage;
 		try {
-			chunkStorage = new DefaultChunkStorage( Constants.CHUNK_STORAGE ,new ChunkFactory( 0xdeadbeef ) );
+			final IChunkFactory chunkFactory = new NoiseChunkFactory( 0xdeadbeef );
+//			final IChunkFactory chunkFactory =  new DebugChunkFactory();
+			chunkStorage = new DefaultChunkStorage( Constants.CHUNK_STORAGE ,chunkFactory );
 		}
 		catch (final IOException e)
 		{
@@ -375,6 +383,10 @@ public class Main implements ApplicationListener {
 		}
 
 		// render UI
+
+		Gdx.graphics.getGL20().glDisable(GL11.GL_DEPTH_TEST);
+		Gdx.graphics.getGL20().glDisable( GL20.GL_CULL_FACE );
+
 		spriteBatch.begin();
 		final int centerX = Gdx.graphics.getWidth()/2;
 		final int centerY = Gdx.graphics.getHeight()/2;

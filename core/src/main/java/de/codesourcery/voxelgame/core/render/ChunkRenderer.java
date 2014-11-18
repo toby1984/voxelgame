@@ -6,8 +6,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Disposable;
 
 import de.codesourcery.voxelgame.core.Block;
@@ -29,12 +33,15 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	private final ChunkManager chunkManager;
 	private final FPSCameraController cameraController;
 
+	private final ShapeRenderer shapeRenderer;
+
 	public ChunkRenderer(ChunkManager chunkManager,FPSCameraController cameraController)
 	{
 		this.chunkManager = chunkManager;
 		this.cameraController = cameraController;
 		this.regularShader = loadRegularShader();
 		this.wireframeShader = loadWireframeShader();
+		this.shapeRenderer = new ShapeRenderer();
 	}
 
 	private static ShaderProgram loadRegularShader()
@@ -160,6 +167,23 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 
 		shader.end();
 
+	    if ( BlockRenderer.DEBUG_RENDER_WIREFRAME)
+	    {
+			final float xOrig = chunk.boundingBox.min.x;
+			final float yOrig = chunk.boundingBox.min.y;
+			final float zOrig = chunk.boundingBox.max.z;
+
+			shapeRenderer.setTransformMatrix(new Matrix4().idt() );
+			shapeRenderer.setProjectionMatrix( cameraController.camera.combined );
+			shapeRenderer.begin(ShapeType.Line);
+			shapeRenderer.setColor(Color.RED);
+			shapeRenderer.box( xOrig,yOrig,zOrig,
+					Chunk.BLOCK_WIDTH*Chunk.BLOCKS_X,
+					Chunk.BLOCK_HEIGHT*Chunk.BLOCKS_Y,
+					Chunk.BLOCK_DEPTH*Chunk.BLOCKS_Z);
+			shapeRenderer.end();
+	    }
+
 	    gl20.glBlendFunc (GL20.GL_ONE, GL20.GL_ZERO);
 	    gl20.glDisable(GL20.GL_BLEND);
 	}
@@ -169,6 +193,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	{
 		wireframeShader.dispose();
 		regularShader.dispose();
+		shapeRenderer.dispose();
 	}
 
 	/**
@@ -180,7 +205,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 	public int setupMesh(Chunk chunk) {
 
 		int quadCount = 0; // debug
-		int notCulled = 0; // debug
+		int renderedBlocks = 0; // debug
 
 		final float xOrig = chunk.boundingBox.min.x;
 		final float yOrig = chunk.boundingBox.min.y;
@@ -234,7 +259,7 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 								// final float lightFactor = 0.7f;
 								renderer.addBlock( blockCenterX , blockCenterY , blockCenterZ , Chunk.BLOCK_DEPTH/2.0f ,lightFactor, blockType , sidesMask );
 								if ( DEBUG_PERFORMANCE ) {
-									notCulled++;
+									renderedBlocks++;
 								}
 							}
 						}
@@ -246,13 +271,13 @@ public class ChunkRenderer implements Disposable , IChunkRenderer {
 		renderer.end();
 
 		chunk.setMeshRebuildRequired( false );
-		chunk.renderedBlockCount = notCulled;
+		chunk.renderedBlockCount = renderedBlocks;
 
 		if ( DEBUG_PERFORMANCE && (frame%60)==0)
 		{
 			System.out.println("Triangle count: "+quadCount*2);
 		}
-		return notCulled;
+		return renderedBlocks;
 	}
 
 	private int determineSidesToRender(Chunk chunk,int blockX,int blockY,int blockZ)

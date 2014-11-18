@@ -23,19 +23,19 @@ public final class Chunk implements Poolable
 	public static final int BLOCKS_X = 32;
 
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 64;
+	public static final int BLOCKS_Y = 32;
 
 	// number of blocks along Z axis
 	public static final int BLOCKS_Z = 32;
 
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 110f;
+	public static final float BLOCK_WIDTH = 120;
 
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 110f;
+	public static final float BLOCK_HEIGHT = 120;
 
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 110f;
+	public static final float BLOCK_DEPTH = 120;
 
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)
@@ -83,13 +83,13 @@ public final class Chunk implements Poolable
 
 		public static void populateBoundingBox(int x,int y,int z,BoundingBox boundingBox)
 		{
-			final float xMin = -HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
-			final float yMin = -HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
-			final float zMin = -HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;
+			final float xMin = -HALF_CHUNK_WIDTH  + x * CHUNK_WIDTH;
+			final float yMin = -HALF_CHUNK_HEIGHT + y * CHUNK_HEIGHT;
+			final float zMin = -HALF_CHUNK_DEPTH  + z * CHUNK_DEPTH;
 
-			final float xMax = HALF_CHUNK_WIDTH+x*CHUNK_WIDTH;
-			final float yMax = HALF_CHUNK_HEIGHT+y*CHUNK_HEIGHT;
-			final float zMax = HALF_CHUNK_DEPTH+z*CHUNK_DEPTH;
+			final float xMax = HALF_CHUNK_WIDTH  + x *CHUNK_WIDTH;
+			final float yMax = HALF_CHUNK_HEIGHT + y *CHUNK_HEIGHT;
+			final float zMax = HALF_CHUNK_DEPTH  + z *CHUNK_DEPTH;
 
 			boundingBox.min.set(xMin,yMin,zMin);
 			boundingBox.max.set(xMax,yMax,zMax);
@@ -433,7 +433,7 @@ public final class Chunk implements Poolable
 	@Override
 	public String toString()
 	{
-	    return "Chunk ("+x+","+y+","+z+" , "+flagsToString()+" )";
+	    return "Chunk ("+x+","+y+","+z+" , access counter = "+accessCounter+" , "+flagsToString()+" )";
 	}
 
 	/**
@@ -585,19 +585,34 @@ public final class Chunk implements Poolable
 	{
 		final StringBuilder result = new StringBuilder();
 		if ( isFlagSet( FLAG_MESH_REBUILD_REQUIRED ) ) {
-			result.append("REBUILD_REQUIRED | ");
+			if ( result.length() > 0 ) {
+				result.append(" | ");
+			}
+			result.append("REBUILD_REQUIRED");
 		}
 		if ( isFlagSet( FLAG_CHANGED_SINCE_LOAD) ) {
-			result.append("NEEDS_STORE | ");
+			if ( result.length() > 0 ) {
+				result.append(" | ");
+			}
+			result.append("NEEDS_STORE");
 		}
 		if ( isFlagSet( FLAG_VISIBLE ) ) {
-			result.append("VISIBLE | ");
+			if ( result.length() > 0 ) {
+				result.append(" | ");
+			}
+			result.append("VISIBLE");
 		}
 		if ( isFlagSet( FLAG_DISPOSED ) ) {
-			result.append("DISPOSED | ");
+			if ( result.length() > 0 ) {
+				result.append(" | ");
+			}
+			result.append("DISPOSED");
 		}
 		if ( isFlagSet( FLAG_IS_EMPTY) ) {
-			result.append("EMPTY | ");
+			if ( result.length() > 0 ) {
+				result.append(" | ");
+			}
+			result.append("EMPTY");
 		}
 		return result.toString();
 	}

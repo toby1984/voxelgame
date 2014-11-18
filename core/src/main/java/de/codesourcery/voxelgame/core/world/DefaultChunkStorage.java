@@ -12,10 +12,10 @@ import de.codesourcery.voxelgame.core.Constants;
 
 public class DefaultChunkStorage implements IChunkStorage
 {
-	private final ChunkFactory chunkFactory;
+	private final IChunkFactory chunkFactory;
 	private final String chunkDirectory;
 
-	public DefaultChunkStorage(File chunkDirectory, ChunkFactory chunkFactory) throws IOException
+	public DefaultChunkStorage(File chunkDirectory, IChunkFactory chunkFactory) throws IOException
 	{
 		if ( ! chunkDirectory.exists() ) {
 			if ( ! chunkDirectory.mkdirs() ) {
@@ -29,17 +29,13 @@ public class DefaultChunkStorage implements IChunkStorage
 	@Override
 	public Chunk loadChunk(int chunkX, int chunkY,int chunkZ) throws IOException
 	{
-		if ( chunkY != 0 ) {
-			return chunkFactory.createEmptyChunk(chunkX, chunkY,chunkZ);
-		}
-
 		Chunk result = null;
 		if ( Constants.USE_PERSISTENT_STORAGE )
 		{
 			try {
 				result = tryLoadFromDisk(chunkX, chunkY, chunkZ);
 			}
-			catch(IOException e) {
+			catch(final IOException e) {
 				e.printStackTrace();
 			}
 		}
@@ -49,7 +45,7 @@ public class DefaultChunkStorage implements IChunkStorage
 			{
 				try {
 					writeToDisk( result );
-				} catch(IOException e) {
+				} catch(final IOException e) {
 					e.printStackTrace();
 				}
 			}
@@ -86,7 +82,7 @@ public class DefaultChunkStorage implements IChunkStorage
 		final BufferedInputStream out = new BufferedInputStream(new FileInputStream(f));
 		try
 		{
-			int read = out.read( chunk.blockType , 0 , chunk.blockType.length );
+			final int read = out.read( chunk.blockType , 0 , chunk.blockType.length );
 			if ( read != chunk.blockType.length ) {
 				throw new IOException("Premature end of input, tried to read "+chunk.blockType.length+" bytes but got only "+read);
 			}
