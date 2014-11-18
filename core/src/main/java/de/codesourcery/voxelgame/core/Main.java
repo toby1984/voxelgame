@@ -32,9 +32,9 @@ import de.codesourcery.voxelgame.core.world.Bullet;
 import de.codesourcery.voxelgame.core.world.Chunk;
 import de.codesourcery.voxelgame.core.world.ChunkManager;
 import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
+import de.codesourcery.voxelgame.core.world.DebugChunkFactory;
 import de.codesourcery.voxelgame.core.world.DefaultChunkStorage;
 import de.codesourcery.voxelgame.core.world.IChunkFactory;
-import de.codesourcery.voxelgame.core.world.NoiseChunkFactory;
 import de.codesourcery.voxelgame.core.world.TickListenerContainer;
 
 public class Main implements ApplicationListener {
@@ -96,10 +96,10 @@ public class Main implements ApplicationListener {
 		camera.position.set(-8586.468f,75.79557f,-10606.933f);
 		// camera.position.set(0f, y, 0.0000000001f);
 		camera.lookAt(0,y,-100);
-		camera.near = 1f;
+		camera.near = 0.1f;
 
 		final float maxChunkSize = Math.max(Math.max(Chunk.CHUNK_WIDTH,Chunk.CHUNK_HEIGHT),Chunk.CHUNK_DEPTH);
-		camera.far = (ChunkManager.LOAD_SURROUNDING_CHUNKS+1)*maxChunkSize;
+		camera.far = 1000; // (ChunkManager.LOAD_SURROUNDING_CHUNKS+1)*maxChunkSize;
 		camera.update();
 
 		skyBox = new SkyBox();
@@ -108,8 +108,8 @@ public class Main implements ApplicationListener {
 
 		final DefaultChunkStorage chunkStorage;
 		try {
-			final IChunkFactory chunkFactory = new NoiseChunkFactory( 0xdeadbeef );
-//			final IChunkFactory chunkFactory =  new DebugChunkFactory();
+//			final IChunkFactory chunkFactory = new NoiseChunkFactory( 0xdeadbeef );
+			final IChunkFactory chunkFactory =  new DebugChunkFactory();
 			chunkStorage = new DefaultChunkStorage( Constants.CHUNK_STORAGE ,chunkFactory );
 		}
 		catch (final IOException e)

@@ -31,7 +31,7 @@ public final class BlockRenderer implements Disposable {
 	private static final boolean CULL_FACES = true;
 	private static final boolean DEPTH_BUFFER = true;
 
-	public static volatile boolean DEBUG_RENDER_WIREFRAME = true;
+	public static volatile boolean DEBUG_RENDER_WIREFRAME = false;
 
 	/*
 			vertexBuilder.put( centerX-halfBlockSize , centerY + halfBlockSize ,centerZ - halfBlockSize , // position

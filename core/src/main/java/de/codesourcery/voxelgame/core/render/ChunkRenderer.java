@@ -23,7 +23,7 @@ import de.codesourcery.voxelgame.core.world.IChunkVisitor;
 
 public class ChunkRenderer implements Disposable , IChunkRenderer {
 
-	private static final boolean DEBUG_PERFORMANCE = true;
+	private static final boolean DEBUG_PERFORMANCE = false;
 
 	private long frame = 0;
 

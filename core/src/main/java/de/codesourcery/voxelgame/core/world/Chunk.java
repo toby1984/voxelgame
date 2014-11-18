@@ -20,22 +20,22 @@ import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
 public final class Chunk implements Poolable
 {
 	// number of blocks along X axis
-	public static final int BLOCKS_X = 32;
+	public static final int BLOCKS_X = 16;
 
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 32;
+	public static final int BLOCKS_Y = 16;
 
 	// number of blocks along Z axis
-	public static final int BLOCKS_Z = 32;
+	public static final int BLOCKS_Z = 16;
 
 	// block width in world coordinates
-	public static final float BLOCK_WIDTH = 120;
+	public static final float BLOCK_WIDTH = 10f;
 
 	// block height in world coordinates
-	public static final float BLOCK_HEIGHT = 120;
+	public static final float BLOCK_HEIGHT = 10f;
 
 	// block depth in world coordinates
-	public static final float BLOCK_DEPTH = 120;
+	public static final float BLOCK_DEPTH = 10f;
 
 	public static final float CHUNK_WIDTH  = BLOCKS_X*BLOCK_WIDTH; // tile width in model coordinates (measured along X axis)
 	public static final float CHUNK_HEIGHT = BLOCKS_Y*BLOCK_HEIGHT; // tile height in model cordinates (measured along Y axis)
@@ -534,9 +534,6 @@ public final class Chunk implements Poolable
 
 	public void setMeshRebuildRequired(boolean rebuildRequired)
 	{
-		if ( rebuildRequired ) {
-			System.out.println("Requesting mesh rebuild for "+this);
-		}
 		setFlag(FLAG_MESH_REBUILD_REQUIRED , rebuildRequired );
 	}
 

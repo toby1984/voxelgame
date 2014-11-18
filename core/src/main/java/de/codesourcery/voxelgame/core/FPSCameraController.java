@@ -21,7 +21,7 @@ public abstract class FPSCameraController extends InputAdapter
 	public float rotateAngle = 360f;
 
 	/** The units to translate the camera when moved the full width or height of the screen. */
-	public float translateUnits = 2400f;
+	public float translateUnits = 200;
 
 	/** The target to rotate around. */
 	public final Vector3 target = new Vector3();
