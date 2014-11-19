@@ -96,10 +96,10 @@ public class Main implements ApplicationListener {
 		camera.position.set(-8586.468f,75.79557f,-10606.933f);
 		// camera.position.set(0f, y, 0.0000000001f);
 		camera.lookAt(0,y,-100);
-		camera.near = 0.1f;
 
 		final float maxChunkSize = Math.max(Math.max(Chunk.CHUNK_WIDTH,Chunk.CHUNK_HEIGHT),Chunk.CHUNK_DEPTH);
-		camera.far = 1000; // (ChunkManager.LOAD_SURROUNDING_CHUNKS+1)*maxChunkSize;
+		camera.far = 5000; // (ChunkManager.LOAD_SURROUNDING_CHUNKS+1)*maxChunkSize;
+		camera.near = 0.1f;
 		camera.update();
 
 		skyBox = new SkyBox();

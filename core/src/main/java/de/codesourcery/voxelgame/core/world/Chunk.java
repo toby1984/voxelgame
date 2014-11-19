@@ -20,13 +20,13 @@ import de.codesourcery.voxelgame.core.world.ChunkManager.Hit;
 public final class Chunk implements Poolable
 {
 	// number of blocks along X axis
-	public static final int BLOCKS_X = 16;
+	public static final int BLOCKS_X = 32;
 
 	// number of blocks along Y axis
-	public static final int BLOCKS_Y = 16;
+	public static final int BLOCKS_Y = 32;
 
 	// number of blocks along Z axis
-	public static final int BLOCKS_Z = 16;
+	public static final int BLOCKS_Z = 32;
 
 	// block width in world coordinates
 	public static final float BLOCK_WIDTH = 10f;

@@ -28,11 +28,18 @@ public class DebugChunkFactory extends AbstractChunkFactory {
 	@Override
 	protected void initializeChunk(Chunk chunk)
 	{
+
+		final int CHARGES_PER_CHUNK = 3;
+
+		final float MAX_CHARGE_STRENGTH = 900;
+
 		final Random rnd = new Random();
 
 		// calculate position of three random charges in each chunk
 		// = 9 * 3 = 27 charges
-		final Vector3[] positions = new Vector3[ 9*3 ];
+		final Vector3[] chargePositions = new Vector3[ 3*3*3*CHARGES_PER_CHUNK ];
+		final float[] chargeStrength = new float[3*3*3*CHARGES_PER_CHUNK];
+
 		final int xEnd = chunk.x+1;
 		final int yEnd = chunk.y+1;
 		final int zEnd = chunk.z+1;
@@ -46,23 +53,26 @@ public class DebugChunkFactory extends AbstractChunkFactory {
 				{
 					ChunkKey.populateBoundingBox(x, y, z, bb);
 
-					final long hash = 31*(31*(31*x)+y)+z;
+					final long hash = 31*(31*((31*x)+y)+z);
 					rnd.setSeed( hash );
 
-					positions[i++] = new Vector3(
+					chargePositions[i] = new Vector3(
 					bb.min.x + rnd.nextFloat()*(Chunk.CHUNK_WIDTH),
 					bb.min.y + rnd.nextFloat()*(Chunk.CHUNK_HEIGHT),
 					bb.min.z + rnd.nextFloat()*(Chunk.CHUNK_DEPTH));
+					chargeStrength[i++] = 1f+rnd.nextFloat()*MAX_CHARGE_STRENGTH;
 
-					positions[i++] = new Vector3(
+					chargePositions[i] = new Vector3(
 					bb.min.x + rnd.nextFloat()*(Chunk.CHUNK_WIDTH),
 					bb.min.y + rnd.nextFloat()*(Chunk.CHUNK_HEIGHT),
 					bb.min.z + rnd.nextFloat()*(Chunk.CHUNK_DEPTH));
+					chargeStrength[i++] = 1f+rnd.nextFloat()*MAX_CHARGE_STRENGTH;
 
-					positions[i++] = new Vector3(
+					chargePositions[i] = new Vector3(
 					bb.min.x + rnd.nextFloat()*(Chunk.CHUNK_WIDTH),
 					bb.min.y + rnd.nextFloat()*(Chunk.CHUNK_HEIGHT),
 					bb.min.z + rnd.nextFloat()*(Chunk.CHUNK_DEPTH));
+					chargeStrength[i++] = 1f+rnd.nextFloat()*MAX_CHARGE_STRENGTH;
 				}
 			}
 		}
@@ -71,6 +81,7 @@ public class DebugChunkFactory extends AbstractChunkFactory {
 		final Vector3 currentPos = new Vector3();
 
 		boolean isEmpty = true;
+		final int len = chargePositions.length;
 		for ( int x = 0 ; x < Chunk.BLOCKS_X ; x++ ) {
 			for ( int y = 0 ; y < Chunk.BLOCKS_Y  ; y++ ) {
 				for ( int z = 0 ; z < Chunk.BLOCKS_Z  ; z++ )
@@ -80,15 +91,16 @@ public class DebugChunkFactory extends AbstractChunkFactory {
 				    currentPos.z = chunk.boundingBox.min.z + z * Chunk.BLOCK_WIDTH;
 
 					float sum = 0;
-					for ( final Vector3 v : positions )
+					for ( int i = 0 ; i < len ; i++)
 					{
+						final Vector3 v = chargePositions[i];
 						final float dx = v.x - currentPos.x;
 						final float dy = v.y - currentPos.y;
 						final float dz = v.z - currentPos.z;
-						sum += 10000f / (dx*dx+ dy*dy + dz*dz);
+						sum += chargeStrength[i] / (dx*dx+ dy*dy + dz*dz);
 					}
 					final int currentIndex = x+Chunk.BLOCKS_X*y+(Chunk.BLOCKS_X*Chunk.BLOCKS_Y)*z;
-					if ( sum != 0f ) {
+					if ( sum > 0.3f ) {
 						blockTypes[ currentIndex ] = Block.Type.SOLID;
 						isEmpty = false;
 					} else {

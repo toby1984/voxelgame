@@ -12,11 +12,18 @@ import de.codesourcery.voxelgame.core.Constants;
 
 public class DefaultChunkStorage implements IChunkStorage
 {
+	public static boolean DELETE_CHUNK_CACHE_ON_START = true;
+
 	private final IChunkFactory chunkFactory;
 	private final String chunkDirectory;
 
 	public DefaultChunkStorage(File chunkDirectory, IChunkFactory chunkFactory) throws IOException
 	{
+		if ( DELETE_CHUNK_CACHE_ON_START )
+		{
+			System.out.println("Deleting chunk cache folder "+chunkDirectory);
+			deleteFolder( chunkDirectory );
+		}
 		if ( ! chunkDirectory.exists() ) {
 			if ( ! chunkDirectory.mkdirs() ) {
 				throw new IOException("Failed to create directory "+chunkDirectory.getAbsolutePath());
@@ -24,6 +31,22 @@ public class DefaultChunkStorage implements IChunkStorage
 		}
 		this.chunkDirectory = chunkDirectory.getAbsolutePath();
 		this.chunkFactory = chunkFactory;
+	}
+
+	private static void deleteFolder(File file) throws IOException
+	{
+		if ( file.isFile() ){
+			file.delete();
+			return;
+		}
+
+        final File[] listFiles = file.listFiles();
+		if ( listFiles != null ) {
+			for ( final File f : listFiles  ) {
+				deleteFolder(f);
+			}
+		}
+		file.delete();
 	}
 
 	@Override
