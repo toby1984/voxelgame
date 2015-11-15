@@ -71,7 +71,6 @@ public class TerrainMesh
         this.vertexBuilder.begin();
         this.indexBuilder.begin();
         
-        
         final float[] heightData = chunk.heightMap;
         
         final float tileSize = chunk.sizeInTiles * TILE_SIZE;
@@ -94,13 +93,16 @@ public class TerrainMesh
         
         Vector3 color0,color1,color2;
         
-        float z = -(sizeInTiles/2f) * TILE_SIZE;
+        final float z0 = -(sizeInTiles/2f) * TILE_SIZE;
+        final float x0 = -(sizeInTiles/2f) * TILE_SIZE;
         int vertexIndex = 0;
-        for ( int tileZ = 0 ; tileZ < sizeInTiles ; tileZ++ , z += TILE_SIZE ) 
+        for ( int tileZ = 0 ; tileZ < sizeInTiles ; tileZ++ ) 
         {
-            float x = -(sizeInTiles/2f) * TILE_SIZE;
-            for ( int tileX = 0 ; tileX < sizeInTiles ; tileX++ , x += TILE_SIZE ) 
+            final float z = z0+tileZ*TILE_SIZE;
+            for ( int tileX = 0 ; tileX < sizeInTiles ; tileX++ ) 
             {
+                final float x = x0 + tileX * TILE_SIZE;
+                
                 final Tile tile = chunk.getTile(tileX, tileZ);
                 
                 final float h3 = heightData[ tileZ*sizeInVertices + tileX     ];

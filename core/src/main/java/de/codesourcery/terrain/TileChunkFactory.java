@@ -16,7 +16,9 @@ import de.codesourcery.voxelgame.core.util.SimplexNoise;
 
 public class TileChunkFactory 
 {
-    public static final int SIZE_IN_TILES = 20;
+    public static final boolean DISK_CACHE_ENABLED = false;
+    
+    public static final int SIZE_IN_TILES = 21;
     public static final int SIZE_IN_VERTICES = SIZE_IN_TILES+1;
     
     private static final File BASE_DIR = new File("tmp");
@@ -29,7 +31,7 @@ public class TileChunkFactory
     private TileChunk loadChunk(TileChunkKey location) throws FileNotFoundException, IOException 
     {
         final File file = getFileName(location);
-        if ( ! file.exists() ) {
+        if ( ! DISK_CACHE_ENABLED || ! file.exists() ) {
             return null;
         }
         try {
@@ -46,6 +48,9 @@ public class TileChunkFactory
     
     private void writeChunk(TileChunk chunk) throws IOException 
     {
+        if ( ! DISK_CACHE_ENABLED ) {
+            return;
+        }
         final File file = getFileName( chunk.location );
         System.out.println("Saving chunk "+chunk+" to "+file.getAbsolutePath());
         
@@ -202,11 +207,11 @@ public class TileChunkFactory
     // create rectangular heightmap
     private float[] createHeightMap(TileChunkKey loc) 
     {
-        final float tileSize = 0.3f;
+        final float tileSize = 0.7f;
         float x = loc.x * tileSize;
         float z = loc.z * tileSize;
         
-        float[] result = noise.createNoise2D( x ,z , SIZE_IN_VERTICES , tileSize , 3 , 0.5f );
+        float[] result = noise.createNoise2D( x ,z , SIZE_IN_VERTICES , tileSize , 5 , 4f );
         for ( int i = 0 ; i < result.length ; i++ ) 
         {
             float f = result[i] - 0.3f;
