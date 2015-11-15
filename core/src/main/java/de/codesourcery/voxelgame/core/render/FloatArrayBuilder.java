@@ -1,7 +1,5 @@
 package de.codesourcery.voxelgame.core.render;
 
-import com.badlogic.gdx.math.Vector3;
-
 public final class FloatArrayBuilder {
 
 	public float[] array;
@@ -82,6 +80,19 @@ public final class FloatArrayBuilder {
 		array[currentOffset++]=value3;
 		array[currentOffset++]=value4;
 	}	
+	
+    public void put(float value1,float value2,float value3,float value4,float value5,float value6) 
+    {
+        if ( currentOffset+6 >= array.length-1) {
+            extendArray(6);
+        }
+        array[currentOffset++]=value1;
+        array[currentOffset++]=value2;
+        array[currentOffset++]=value3;
+        array[currentOffset++]=value4;
+        array[currentOffset++]=value5;
+        array[currentOffset++]=value6;
+    }   	
 	
 	public void put(float value1,float value2,float value3,float value4,float value5,float value6,float value7) 
 	{

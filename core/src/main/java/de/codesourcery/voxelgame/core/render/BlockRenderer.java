@@ -86,11 +86,12 @@ public final class BlockRenderer implements Disposable {
 	private final ShortArrayBuilder indexBuilder;
 	private final FloatArrayBuilder vertexBuilder;
 
+	private VertexBufferObject vbo;
+	private IndexBufferObject ibo;
+	
 	public int maxIndexArraySize = 0;
 	public int maxVertexArraySize = 0;
 
-	private VertexBufferObject vbo;
-	private IndexBufferObject ibo;
 
 	private volatile boolean uploadDataToGPU = true;
 
@@ -473,19 +474,6 @@ public final class BlockRenderer implements Disposable {
 		}
 	}
 
-	private VertexBufferObject createVBO(int vertexCount)
-	{
-		final VertexAttribute lightFactorAttribute  = new VertexAttribute( 250 , 1 , "a_lightFactor" ); // value in the range 0...1
-		final VertexAttribute[] attrs = new VertexAttribute[]
-				{
-				new VertexAttribute(Usage.Position, 3, ShaderProgram.POSITION_ATTRIBUTE),
-				new VertexAttribute(Usage.Normal, 3, ShaderProgram.NORMAL_ATTRIBUTE),
-				new VertexAttribute(Usage.TextureCoordinates, 2, ShaderProgram.TEXCOORD_ATTRIBUTE),
-				lightFactorAttribute // a float in the range [0...1] (no light ... full light)
-				};
-		return new VertexBufferObject(true, vertexCount , attrs );
-	}
-
 	public BlockRenderer end()
 	{
 		indexBuilder.end();
@@ -580,6 +568,19 @@ public final class BlockRenderer implements Disposable {
 	private IndexBufferObject createIBO(int indexCount) {
 		return new IndexBufferObject(true,indexCount);
 	}
+	
+    private VertexBufferObject createVBO(int vertexCount)
+    {
+        final VertexAttribute lightFactorAttribute  = new VertexAttribute( 250 , 1 , "a_lightFactor" ); // value in the range 0...1
+        final VertexAttribute[] attrs = new VertexAttribute[]
+                {
+                new VertexAttribute(Usage.Position, 3, ShaderProgram.POSITION_ATTRIBUTE),
+                new VertexAttribute(Usage.Normal, 3, ShaderProgram.NORMAL_ATTRIBUTE),
+                new VertexAttribute(Usage.TextureCoordinates, 2, ShaderProgram.TEXCOORD_ATTRIBUTE),
+                lightFactorAttribute // a float in the range [0...1] (no light ... full light)
+                };
+        return new VertexBufferObject(true, vertexCount , attrs );
+    }	
 
 	@Override
 	public void dispose()

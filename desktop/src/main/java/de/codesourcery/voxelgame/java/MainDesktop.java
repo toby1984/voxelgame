@@ -3,8 +3,8 @@ package de.codesourcery.voxelgame.java;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 
+import de.codesourcery.terrain.Main;
 import de.codesourcery.voxelgame.core.Constants;
-import de.codesourcery.voxelgame.core.Main;
 
 public class MainDesktop 
 {

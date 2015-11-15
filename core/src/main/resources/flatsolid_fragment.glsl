@@ -1,0 +1,32 @@
+#version 330
+#line 1
+
+smooth in vec3 rotatedSurfaceNormal;
+smooth in vec3 v_lightDir;
+smooth in vec4 v_color;
+
+#define DISTANCE_FOG
+
+void main()                                   
+{
+   // phong shading
+   float dotProduct = dot(normalize(rotatedSurfaceNormal),normalize(v_lightDir));
+   vec3 shadedColor = max(0.5, dotProduct) * v_color.rgb;
+             
+#ifdef DISTANCE_FOG
+             
+   // per-pixel "fog" (actually modifies alpha-channel only)
+   const float zFar = 5000;
+   const float fogDensity = 1.5; 
+   
+   float distToCamera = (gl_FragCoord.z / gl_FragCoord.w)/zFar;
+   float fogFactor = exp( -pow( fogDensity * distToCamera , 6.0) );   
+   fogFactor = clamp(fogFactor, 0.0, 1.0);
+
+   gl_FragColor.rgb=shadedColor;
+   gl_FragColor.a = v_color.a*fogFactor;
+#else
+   gl_FragColor.rgb = shadedColor;
+   gl_FragColor.a = v_color.a;
+#endif          
+}
